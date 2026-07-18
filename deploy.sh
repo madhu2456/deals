@@ -200,11 +200,24 @@ pull_or_clone() {
   # Avoid "dubious ownership" when directory was created by another user
   git config --global --add safe.directory "${APP_DIR}" 2>/dev/null || true
 
+  # If root left root-owned files, git pull fails for madhu ("Permission denied")
+  if [ ! -w "${APP_DIR}/.git" ] || [ ! -w "${APP_DIR}" ]; then
+    echo "WARNING: ${APP_DIR} not fully writable by $(whoami)."
+    echo "  As root run: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
+  fi
+
   if [ -d "${APP_DIR}/.git" ]; then
     echo "Updating repository..."
-    git -C "${APP_DIR}" fetch origin
+    if ! git -C "${APP_DIR}" fetch origin; then
+      echo "git fetch failed — check ownership of ${APP_DIR} (must be ${DEPLOY_USER})"
+      exit 1
+    fi
     git -C "${APP_DIR}" checkout "${BRANCH}"
-    git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}"
+    if ! git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}"; then
+      echo "git pull failed — often root-owned files under ${APP_DIR}."
+      echo "  Fix once as root: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
+      exit 1
+    fi
   else
     mkdir -p "$(dirname "${APP_DIR}")"
     if [ -d "${APP_DIR}" ] && [ -n "$(ls -A "${APP_DIR}" 2>/dev/null | grep -v '^\.env$' || true)" ]; then
@@ -288,7 +301,8 @@ if [ "${MODE}" = "update" ]; then
   ensure_env
   chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
   compose_up
-  sync_nginx_port
+  # Copy nginx/*.conf from this repo into sites-available on every deploy
+  install_nginx_from_repo
 
   echo ""
   echo "=== Update complete ==="

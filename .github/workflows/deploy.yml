@@ -83,6 +83,12 @@ jobs:
 
             cd "${APP_DIR}"
 
+            # Fix ownership if root previously touched the tree (permission denied on git pull)
+            if command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
+              echo "Ensuring ${APP_DIR} is owned by $(whoami)..."
+              sudo chown -R "$(whoami):$(whoami)" "${APP_DIR}" || true
+            fi
+
             # Avoid git "dubious ownership" after chown between root/madhu
             git config --global --add safe.directory "${APP_DIR}" || true
 
@@ -91,7 +97,7 @@ jobs:
             git fetch origin
             git checkout main
             git pull --ff-only origin main
-            chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
+            chmod +x deploy.sh docker/entrypoint.sh scripts/*.sh 2>/dev/null || true
 
             # 2) Update using latest script (no root required)
             export APP_DIR=/opt/deals
