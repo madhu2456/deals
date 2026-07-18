@@ -78,13 +78,23 @@ jobs:
 
             if [ ! -d "${APP_DIR}/.git" ]; then
               echo "ERROR: App not found at ${APP_DIR}."
-              echo "Clone once: git clone https://github.com/madhu2456/deals.git /opt/deals"
               exit 1
             fi
 
             cd "${APP_DIR}"
-            export APP_DIR BRANCH=main DOMAIN=deals.madhudadi.in DEPLOY_USER=madhu
+
+            # 1) Pull FIRST so we never run a stale deploy.sh that still requires root
+            echo "Pulling latest main..."
+            git fetch origin
+            git checkout main
+            git pull --ff-only origin main
             chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
+
+            # 2) Update using latest script (no root required)
+            export APP_DIR=/opt/deals
+            export BRANCH=main
+            export DOMAIN=deals.madhudadi.in
+            export DEPLOY_USER=madhu
             ./deploy.sh --update
 
             echo "Waiting for health on :3000..."
