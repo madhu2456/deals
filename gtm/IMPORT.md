@@ -34,6 +34,7 @@
 
 ### Variables
 - `GA4 Measurement ID` = `G-THQ1ZPJ4B7`
+- `js - page_title` = `document.title` (custom JS; GTM import does not accept built-in `PAGE_TITLE`)
 - Data Layer vars: `deal_id`, `deal_slug`, `deal_title`, `brand_name`, `deal_url`, `coupon_code`, `link_url`, `category_id`, `search_term`, `results_count`, `content_*`
 
 ### Site code (already in this repo)

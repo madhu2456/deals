@@ -105,7 +105,7 @@
                 "type": "MAP",
                 "map": [
                   { "type": "TEMPLATE", "key": "parameter", "value": "page_title" },
-                  { "type": "TEMPLATE", "key": "parameterValue", "value": "{{Page Title}}" }
+                  { "type": "TEMPLATE", "key": "parameterValue", "value": "{{js - page_title}}" }
                 ]
               }
             ]
@@ -548,14 +548,26 @@
         "type": "LINK_CLICK",
         "filter": [
           {
-            "type": "CSS_SELECTOR",
+            "type": "MATCH_REGEX",
             "parameter": [
               { "type": "TEMPLATE", "key": "arg0", "value": "{{Click URL}}" },
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": "a[href^='http']:not([href*='deals.madhudadi.in']):not([href^='/'])"
+                "value": "^https?:\\/\\/"
               }
+            ]
+          },
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              { "type": "TEMPLATE", "key": "arg0", "value": "{{Click URL}}" },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "deals\\.madhudadi\\.in"
+              },
+              { "type": "BOOLEAN", "key": "negate", "value": "true" }
             ]
           }
         ],
@@ -589,6 +601,22 @@
           }
         ],
         "fingerprint": "1784358528954",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6346521942",
+        "containerId": "258697142",
+        "variableId": "19",
+        "name": "js - page_title",
+        "type": "jsm",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  return document.title || '';\n}"
+          }
+        ],
+        "fingerprint": "1784363200019",
         "formatValue": {}
       },
       {
@@ -780,7 +808,6 @@
       { "accountId": "6346521942", "containerId": "258697142", "type": "PAGE_PATH", "name": "Page Path" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "REFERRER", "name": "Referrer" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "EVENT", "name": "Event" },
-      { "accountId": "6346521942", "containerId": "258697142", "type": "PAGE_TITLE", "name": "Page Title" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "CLICK_ELEMENT", "name": "Click Element" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "CLICK_CLASSES", "name": "Click Classes" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "CLICK_ID", "name": "Click ID" },
@@ -790,6 +817,7 @@
       { "accountId": "6346521942", "containerId": "258697142", "type": "NEW_HISTORY_FRAGMENT", "name": "New History Fragment" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "OLD_HISTORY_FRAGMENT", "name": "Old History Fragment" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "NEW_HISTORY_STATE", "name": "New History State" },
+      { "accountId": "6346521942", "containerId": "258697142", "type": "OLD_HISTORY_STATE", "name": "Old History State" },
       { "accountId": "6346521942", "containerId": "258697142", "type": "HISTORY_SOURCE", "name": "History Source" }
     ],
     "fingerprint": "1784364000000",
