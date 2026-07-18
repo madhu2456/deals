@@ -101,6 +101,13 @@ jobs:
             export APP_PORT=3002
             ./deploy.sh --update
 
+            # Ensure nginx config from repo is installed (if passwordless sudo available)
+            if command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
+              echo "Installing nginx config from repo via sudo..."
+              sudo APP_DIR=/opt/deals DOMAIN=deals.madhudadi.in APP_PORT=3002 \
+                bash /opt/deals/scripts/setup-nginx-deals.sh || true
+            fi
+
             echo "Waiting for health on :3002..."
             for i in $(seq 1 40); do
               if curl -fsS "http://127.0.0.1:3002/" >/dev/null 2>&1; then

@@ -109,12 +109,82 @@ NODE_ENV=production
 EOF
     chmod 600 "${APP_DIR}/.env"
     if id "${DEPLOY_USER}" >/dev/null 2>&1; then
-      chown "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_DIR}/.env"
+      chown "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_DIR}/.env" 2>/dev/null || true
     fi
     echo "  .env written. Initial admin password: ${ADMIN_PASSWORD}"
     echo "  (also saved in ${APP_DIR}/.env — rotate after first login)"
   else
-    echo ".env already exists — leaving it unchanged."
+    echo ".env already exists — ensuring APP_PORT=${APP_PORT}"
+    if grep -q '^APP_PORT=' "${APP_DIR}/.env" 2>/dev/null; then
+      sed -i "s/^APP_PORT=.*/APP_PORT=${APP_PORT}/" "${APP_DIR}/.env"
+    else
+      echo "APP_PORT=${APP_PORT}" >>"${APP_DIR}/.env"
+    fi
+  fi
+}
+
+# Run a command as root if needed (root, or passwordless sudo)
+as_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    sudo "$@"
+  else
+    return 1
+  fi
+}
+
+# Install repo nginx config → /etc/nginx/sites-available/deals (every deploy)
+# Source of truth: ${APP_DIR}/nginx/deals.conf or deals.ssl.conf
+install_nginx_from_repo() {
+  local dest="/etc/nginx/sites-available/${APP_NAME}"
+  local enabled="/etc/nginx/sites-enabled/${APP_NAME}"
+  local http_src="${APP_DIR}/nginx/deals.conf"
+  local ssl_src="${APP_DIR}/nginx/deals.ssl.conf"
+  local tmp
+  tmp="$(mktemp)"
+
+  if [ ! -f "${http_src}" ]; then
+    echo "  Nginx: no ${http_src} in repo — skipping"
+    return 0
+  fi
+
+  echo "Installing Nginx site from repo → ${dest} (port ${APP_PORT})"
+
+  # Prefer SSL template when Let's Encrypt certs already exist
+  if [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ] && [ -f "${ssl_src}" ]; then
+    echo "  Using SSL template (certs found for ${DOMAIN})"
+    sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__APP_PORT__/${APP_PORT}/g" "${ssl_src}" >"${tmp}"
+    # Drop ssl_dhparam line if file missing (avoids nginx -t failure)
+    if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
+      sed -i '/ssl_dhparam/d' "${tmp}"
+    fi
+    if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+      sed -i '/options-ssl-nginx.conf/d' "${tmp}"
+    fi
+  else
+    echo "  Using HTTP template"
+    sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__APP_PORT__/${APP_PORT}/g" "${http_src}" >"${tmp}"
+  fi
+
+  if ! as_root cp "${tmp}" "${dest}"; then
+    echo "  WARNING: cannot write ${dest} (need root or passwordless sudo)."
+    echo "  Install once: sudo cp ${tmp} ${dest} && sudo ln -sfn ${dest} ${enabled} && sudo nginx -t && sudo systemctl reload nginx"
+    echo "  Or allow madhu: echo '${DEPLOY_USER} ALL=(root) NOPASSWD: /usr/sbin/nginx, /bin/systemctl reload nginx, /bin/cp, /bin/ln' | sudo tee /etc/sudoers.d/deals-nginx"
+    rm -f "${tmp}"
+    return 0
+  fi
+  rm -f "${tmp}"
+
+  as_root ln -sfn "${dest}" "${enabled}" || true
+  as_root mkdir -p /var/www/html || true
+
+  if as_root nginx -t; then
+    as_root systemctl reload nginx || as_root service nginx reload || true
+    echo "  Nginx reloaded with git config for ${DOMAIN} → 127.0.0.1:${APP_PORT}"
+  else
+    echo "  ERROR: nginx -t failed after installing ${dest}"
+    return 1
   fi
 }
 
@@ -122,35 +192,8 @@ configure_nginx() {
   echo "Configuring Nginx reverse proxy for ${DOMAIN}..."
   apt-get update -y
   apt-get install -y nginx
-
-  cat >"/etc/nginx/sites-available/${APP_NAME}" <<EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
-
-    client_max_body_size 10m;
-
-    location / {
-        proxy_pass http://127.0.0.1:${APP_PORT};
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 60s;
-        proxy_send_timeout 60s;
-    }
-}
-EOF
-
-  ln -sf "/etc/nginx/sites-available/${APP_NAME}" "/etc/nginx/sites-enabled/${APP_NAME}"
-  rm -f /etc/nginx/sites-enabled/default
-  nginx -t
+  install_nginx_from_repo
   systemctl enable --now nginx
-  systemctl reload nginx
 }
 
 pull_or_clone() {
@@ -245,10 +288,11 @@ if [ "${MODE}" = "update" ]; then
   ensure_env
   chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
   compose_up
+  sync_nginx_port
 
   echo ""
   echo "=== Update complete ==="
-  echo "  App:  https://${DOMAIN}"
+  echo "  App:  https://${DOMAIN}  (upstream 127.0.0.1:${APP_PORT})"
   echo "  Logs: cd ${APP_DIR} && docker compose logs -f"
   exit 0
 fi
