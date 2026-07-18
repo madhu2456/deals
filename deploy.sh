@@ -201,26 +201,24 @@ fix_ownership() {
 }
 
 # ---------------------------------------------------------------------------
-# Update path (non-root: run as madhu)
+# Update path (non-root: run as madhu — NEVER requires root)
 # ---------------------------------------------------------------------------
 if [ "${MODE}" = "update" ]; then
+  echo "    Running non-root update as $(whoami)..."
   need_docker
 
   if [ ! -d "${APP_DIR}/.git" ]; then
     echo "App not found at ${APP_DIR}."
-    echo "Bootstrap once (as root):"
-    echo "  export DEPLOY_USER=${DEPLOY_USER}"
-    echo "  export APP_DIR=${APP_DIR}"
-    echo "  sudo -E ./deploy.sh"
     exit 1
   fi
 
   if [ ! -w "${APP_DIR}" ]; then
     echo "No write access to ${APP_DIR} as $(whoami)."
-    echo "As root: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
+    echo "As root once: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
     exit 1
   fi
 
+  # Repo may already be pulled by CI; pull again is fine / no-op if up to date
   pull_or_clone
   ensure_env
   chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
