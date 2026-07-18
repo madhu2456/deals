@@ -1,10 +1,11 @@
-# Port map (this server):
-#   blog frontend  → 127.0.0.1:3001
-#   deals          → 127.0.0.1:3002  (this service)
-#   udemy-enroller → 0.0.0.0:8000
-#   blog backend   → 127.0.0.1:8001
+# Port map on the Netcup server:
+#   madhudadi.in (portfolio) → host :3000
+#   blog                     → 127.0.0.1:3001
+#   deals (this app)         → 127.0.0.1:3002  ← HOST port
+#   udemy-enroller           → :8000
 #
-# Nginx for deals.madhudadi.in should proxy_pass http://127.0.0.1:3002
+# Inside the container Next still listens on 3000; only the HOST maps to 3002.
+# Nginx deals.madhudadi.in → proxy_pass http://127.0.0.1:3002
 
 services:
   deals:
@@ -16,16 +17,18 @@ services:
     container_name: deals-app
     restart: unless-stopped
     ports:
-      # Bind localhost only — public traffic comes via Nginx
-      - "127.0.0.1:${APP_PORT:-3002}:3000"
+      # Host 3002 → container 3000 (do not use host 3000 — madhudadi.in uses it)
+      - "127.0.0.1:3002:3000"
     env_file:
       - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-file:/app/data/deals.db}
       NODE_ENV: production
+      # Port INSIDE the container (unchanged)
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
       RUN_SEED: ${RUN_SEED:-false}
+      APP_PORT: "3002"
     volumes:
       - deals_data:/app/data
     healthcheck:

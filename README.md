@@ -71,7 +71,9 @@ pnpm seed          # categories only (no mock deals)
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Admin: `/admin`.
+Open [http://localhost:3000](http://localhost:3000) for local dev. Admin: `/admin`.
+
+**Production ports on the shared server:** host `3002` (Nginx → deals). Host `3000` is used by [madhudadi.in](https://madhudadi.in).
 
 Default admin (change before production):
 
