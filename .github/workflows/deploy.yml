@@ -1,14 +1,13 @@
 # Deploy Deals to a DigitalOcean droplet on every push to main.
 #
-# Required GitHub repository secrets:
-#   DEPLOY_HOST     — droplet IP or hostname (e.g. 167.x.x.x or deals.madhudadi.in)
+# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST     — droplet IP or hostname (e.g. 167.99.x.x)
 #   DEPLOY_USER     — SSH user (usually root)
-#   DEPLOY_SSH_KEY  — private key with access to the droplet
+#   DEPLOY_SSH_KEY  — full private key (including -----BEGIN ... END----- lines)
 #
-# Optional secrets / variables:
+# Optional:
 #   DEPLOY_PORT     — SSH port (default 22)
 #   DEPLOY_PATH     — app directory on server (default /opt/deals)
-#   DEPLOY_BRANCH   — branch to pull (default main)
 #
 # First-time: SSH into the droplet and run ./deploy.sh once (bootstrap).
 # After that, this workflow handles updates.
@@ -32,6 +31,34 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Check deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -e
+          missing=0
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::error::Secret DEPLOY_HOST is missing or empty. Set it to your droplet IP (e.g. 167.99.x.x)."
+            missing=1
+          fi
+          if [ -z "$DEPLOY_USER" ]; then
+            echo "::error::Secret DEPLOY_USER is missing or empty. Set it to your SSH user (usually root)."
+            missing=1
+          fi
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Secret DEPLOY_SSH_KEY is missing or empty. Paste the full private SSH key."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo ""
+            echo "Fix: GitHub repo → Settings → Secrets and variables → Actions → New repository secret"
+            echo "Required: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY"
+            exit 1
+          fi
+          echo "Deploy secrets look present (host length: ${#DEPLOY_HOST}, user: $DEPLOY_USER)."
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -44,29 +71,25 @@ jobs:
           script: |
             set -euo pipefail
             APP_DIR="${{ secrets.DEPLOY_PATH }}"
-            if [ -z "${APP_DIR}" ] || [ "${APP_DIR}" = "" ]; then
+            if [ -z "${APP_DIR}" ]; then
               APP_DIR="/opt/deals"
             fi
-            BRANCH="${{ secrets.DEPLOY_BRANCH }}"
-            if [ -z "${BRANCH}" ] || [ "${BRANCH}" = "" ]; then
-              BRANCH="main"
-            fi
 
-            echo "Deploying to ${APP_DIR} (branch ${BRANCH})..."
+            echo "Deploying to ${APP_DIR}..."
 
             if [ ! -d "${APP_DIR}/.git" ]; then
               echo "ERROR: App not found at ${APP_DIR}."
-              echo "SSH in and run first-time bootstrap:"
-              echo "  git clone <your-repo> ${APP_DIR}"
-              echo "  cd ${APP_DIR} && chmod +x deploy.sh && sudo ./deploy.sh"
+              echo "First-time bootstrap on the server:"
+              echo "  git clone https://github.com/madhu2456/deals.git ${APP_DIR}"
+              echo "  cd ${APP_DIR} && chmod +x deploy.sh docker/entrypoint.sh && ./deploy.sh"
               exit 1
             fi
 
             cd "${APP_DIR}"
-            export BRANCH
             export APP_DIR
+            export BRANCH=main
             chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
-            sudo -E ./deploy.sh --update
+            ./deploy.sh --update
 
             echo "Waiting for health..."
             for i in $(seq 1 30); do
@@ -76,6 +99,6 @@ jobs:
               fi
               sleep 2
             done
-            echo "WARNING: health check timed out — check: docker compose logs"
+            echo "WARNING: health check timed out — check logs:"
             docker compose -f "${APP_DIR}/docker-compose.yml" logs --tail=80 || true
             exit 1
