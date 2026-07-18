@@ -1,0 +1,37 @@
+services:
+  deals:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://deals.madhudadi.in}
+    container_name: deals-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      # Absolute SQLite path inside the container (volume-backed)
+      DATABASE_URL: ${DATABASE_URL:-file:/app/data/deals.db}
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      RUN_SEED: ${RUN_SEED:-false}
+    volumes:
+      - deals_data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+volumes:
+  deals_data:

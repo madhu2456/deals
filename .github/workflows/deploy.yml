@@ -1,0 +1,81 @@
+# Deploy Deals to a DigitalOcean droplet on every push to main.
+#
+# Required GitHub repository secrets:
+#   DEPLOY_HOST     — droplet IP or hostname (e.g. 167.x.x.x or deals.madhudadi.in)
+#   DEPLOY_USER     — SSH user (usually root)
+#   DEPLOY_SSH_KEY  — private key with access to the droplet
+#
+# Optional secrets / variables:
+#   DEPLOY_PORT     — SSH port (default 22)
+#   DEPLOY_PATH     — app directory on server (default /opt/deals)
+#   DEPLOY_BRANCH   — branch to pull (default main)
+#
+# First-time: SSH into the droplet and run ./deploy.sh once (bootstrap).
+# After that, this workflow handles updates.
+
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script_stop: true
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            APP_DIR="${{ secrets.DEPLOY_PATH }}"
+            if [ -z "${APP_DIR}" ] || [ "${APP_DIR}" = "" ]; then
+              APP_DIR="/opt/deals"
+            fi
+            BRANCH="${{ secrets.DEPLOY_BRANCH }}"
+            if [ -z "${BRANCH}" ] || [ "${BRANCH}" = "" ]; then
+              BRANCH="main"
+            fi
+
+            echo "Deploying to ${APP_DIR} (branch ${BRANCH})..."
+
+            if [ ! -d "${APP_DIR}/.git" ]; then
+              echo "ERROR: App not found at ${APP_DIR}."
+              echo "SSH in and run first-time bootstrap:"
+              echo "  git clone <your-repo> ${APP_DIR}"
+              echo "  cd ${APP_DIR} && chmod +x deploy.sh && sudo ./deploy.sh"
+              exit 1
+            fi
+
+            cd "${APP_DIR}"
+            export BRANCH
+            export APP_DIR
+            chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
+            sudo -E ./deploy.sh --update
+
+            echo "Waiting for health..."
+            for i in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:3000/" >/dev/null 2>&1; then
+                echo "Healthy."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "WARNING: health check timed out — check: docker compose logs"
+            docker compose -f "${APP_DIR}/docker-compose.yml" logs --tail=80 || true
+            exit 1

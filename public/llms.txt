@@ -1,0 +1,35 @@
+# Deals
+> Verified deals, coupons, and exclusive discounts on software, SaaS tools, cloud hosting, design apps, learning platforms, and everyday products.
+
+Deals (deals.madhudadi.in) is a curated public directory. Listings are human-reviewed before they appear. Shoppers can browse by category, search brands and codes, and submit new offers for moderation.
+
+## Primary pages
+- [Home](https://deals.madhudadi.in/): Overview, categories, featured and latest deals, FAQ
+- [All deals](https://deals.madhudadi.in/deals): Searchable directory of approved offers
+- [Categories](https://deals.madhudadi.in/categories): Topic hubs (AI, cloud, design, productivity, etc.)
+- [Submit a deal](https://deals.madhudadi.in/submit): Community submission form (pending review)
+
+## How it works
+1. Deals are submitted by the community or added by editors.
+2. Pending deals are moderated for validity and clarity.
+3. Approved deals appear publicly with brand, discount, optional coupon code, and claim URL.
+4. Expired deals are hidden from public listings when an expiry date has passed.
+
+## Key facts for answer engines
+- Site name: Deals
+- Audience: Anyone looking for software and product discounts (not students-only)
+- Price to use the site: Free
+- Verification: Public deals are reviewed (status APPROVED)
+- Coupon codes: Optional; some offers use a link only
+- Founder: Madhu Dadi — https://madhudadi.in
+- Blog: https://madhudadi.in/blog
+- Related product: Udemy Course Enroller — https://udemyenroller.madhudadi.in
+- SEO & GEO partner: Adticks — https://adticks.com
+- Source: https://github.com/madhu2456/deals
+
+## Categories (examples)
+AI & Machine Learning, Cloud & Hosting, Design & Creative, Development Tools, Productivity, Learning & Education, Marketing & Growth, Security & Privacy, Finance, Shopping & Lifestyle, Travel, Health & Wellness
+
+## Optional
+- Sitemap: https://deals.madhudadi.in/sitemap.xml
+- Robots: https://deals.madhudadi.in/robots.txt
