@@ -13,23 +13,20 @@ export DATABASE_URL="${DATABASE_URL:-file:/app/data/deals.db}"
 echo "[deals] DATABASE_URL=${DATABASE_URL}"
 echo "[deals] Running Prisma migrations..."
 
-# Use local binaries — avoid corepack/pnpm (needs network + writable HOME)
-if [ -x ./node_modules/.bin/prisma ]; then
-  ./node_modules/.bin/prisma migrate deploy
-elif [ -x ./node_modules/prisma/build/index.js ]; then
-  node ./node_modules/prisma/build/index.js migrate deploy
-else
+PRISMA_BIN="./node_modules/.bin/prisma"
+if [ ! -x "$PRISMA_BIN" ]; then
   echo "[deals] ERROR: prisma CLI not found in node_modules"
   exit 1
 fi
 
-if [ "${RUN_SEED:-false}" = "true" ]; then
-  echo "[deals] Seeding categories..."
-  if [ -x ./node_modules/.bin/tsx ]; then
-    ./node_modules/.bin/tsx prisma/seed.ts || echo "[deals] Seed skipped/failed (non-fatal)"
-  else
-    echo "[deals] tsx not found — skip seed"
-  fi
+"$PRISMA_BIN" migrate deploy
+
+# Always ensure categories exist (idempotent upserts) — critical for SEO category pages
+if [ -x ./node_modules/.bin/tsx ]; then
+  echo "[deals] Ensuring categories are seeded..."
+  ./node_modules/.bin/tsx prisma/seed.ts || echo "[deals] Seed failed (non-fatal)"
+elif [ "${RUN_SEED:-false}" = "true" ]; then
+  echo "[deals] tsx missing — cannot seed"
 fi
 
 echo "[deals] Starting Next.js on :${PORT:-3000}"

@@ -177,10 +177,28 @@ export function offerSchema(deal: {
 
   const offer: Record<string, unknown> = {
     "@type": "Offer",
+    "@id": `${url}#offer`,
     name: deal.title,
     description: deal.shortDescription || deal.description,
+    // Landing page on our site + merchant URL for claim
     url,
+    mainEntityOfPage: url,
+    // Where the shopper redeems the deal
+    ...(deal.dealUrl ? { additionalProperty: {
+      "@type": "PropertyValue",
+      name: "merchantDealUrl",
+      value: deal.dealUrl,
+    }} : {}),
     availability,
+    itemOffered: {
+      "@type": "Service",
+      name: deal.title,
+      provider: {
+        "@type": "Organization",
+        name: deal.brandName,
+        ...(deal.brandUrl ? { url: deal.brandUrl } : {}),
+      },
+    },
     seller: {
       "@type": "Organization",
       name: deal.brandName,
@@ -193,7 +211,13 @@ export function offerSchema(deal: {
         }
       : {}),
     ...(deal.discountValue
-      ? { priceSpecification: { "@type": "PriceSpecification", description: deal.discountValue } }
+      ? {
+          priceSpecification: {
+            "@type": "PriceSpecification",
+            description: deal.discountValue,
+            name: deal.discountValue,
+          },
+        }
       : {}),
     ...(deal.expiryDate
       ? {
@@ -205,10 +229,11 @@ export function offerSchema(deal: {
       : {}),
   };
 
-  // Prefer Product when we have brand + offer; good for rich results / AI extraction
+  // Product + Offer is widely understood by Google & AI extractors
   return {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": `${url}#product`,
     name: deal.title,
     description: deal.shortDescription || deal.description,
     brand: {
@@ -217,7 +242,7 @@ export function offerSchema(deal: {
     },
     category: deal.category.name,
     url,
-    image: deal.logoUrl || absoluteUrl("/icon-512.png"),
+    image: [deal.logoUrl || absoluteUrl("/icon-512.png")],
     offers: offer,
     ...(deal.updatedAt
       ? {

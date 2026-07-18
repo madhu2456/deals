@@ -41,9 +41,8 @@ export const metadata: Metadata = {
   creator: "Madhu Dadi",
   publisher: SITE_NAME,
   category: "shopping",
-  alternates: {
-    canonical: "/",
-  },
+  // Do NOT set a sitewide canonical here — each page defines its own.
+  // A root canonical of "/" would make every page claim the homepage as canonical.
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png", sizes: "192x192" },
@@ -71,7 +70,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
     images: [absoluteUrl("/icon-512.png")],
@@ -86,6 +85,10 @@ export const metadata: Metadata = {
       "max-snippet": -1,
       "max-video-preview": -1,
     },
+  },
+  // Hint for crawlers / some AI tools that an LLM context file exists
+  other: {
+    "llms-txt": absoluteUrl("/llms.txt"),
   },
   verification: process.env.GOOGLE_SITE_VERIFICATION
     ? { google: process.env.GOOGLE_SITE_VERIFICATION }

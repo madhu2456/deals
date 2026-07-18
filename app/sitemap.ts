@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 3600; // refresh hourly
+export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl();
@@ -25,14 +25,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${site}/categories`,
       lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.85,
+      changeFrequency: "daily",
+      priority: 0.9,
     },
     {
       url: `${site}/submit`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.5,
+      priority: 0.4,
     },
   ];
 
@@ -50,14 +50,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: { slug: true, updatedAt: true, approvedAt: true },
         orderBy: { updatedAt: "desc" },
+        // Cap for sitemap size safety
+        take: 45_000,
       }),
     ]);
 
     const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
       url: `${site}/categories/${c.slug}`,
-      lastModified: c.updatedAt,
+      lastModified: c.updatedAt ?? now,
       changeFrequency: "daily" as const,
-      priority: 0.8,
+      priority: 0.85,
     }));
 
     const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
@@ -68,7 +70,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
     return [...staticRoutes, ...categoryRoutes, ...dealRoutes];
-  } catch {
+  } catch (err) {
+    console.error("[sitemap] DB query failed, returning static routes only", err);
     return staticRoutes;
   }
 }
