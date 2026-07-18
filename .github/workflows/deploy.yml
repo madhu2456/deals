@@ -6,15 +6,9 @@
 #   DEPLOY_SSH_KEY  — private key authorized for madhu
 #
 # Optional:
-#   DEPLOY_PATH     — default /home/madhu/deals
+#   DEPLOY_PATH     — e.g. /opt/deals or /home/madhu/deals
+#                     (auto-detects /opt/deals then ~/deals if unset)
 #   DEPLOY_PORT     — SSH port (default 22)
-#
-# One-time on server (as root):
-#   usermod -aG docker madhu
-#   # if app was under /opt/deals as root:
-#   mkdir -p /home/madhu && mv /opt/deals /home/madhu/deals || true
-#   chown -R madhu:madhu /home/madhu/deals
-#   # ensure madhu can SSH (authorized_keys under /home/madhu/.ssh)
 
 name: Deploy to DigitalOcean
 

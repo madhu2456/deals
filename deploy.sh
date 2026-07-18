@@ -21,10 +21,16 @@ BRANCH="${BRANCH:-main}"
 DOMAIN="${DOMAIN:-deals.madhudadi.in}"
 APP_PORT="${APP_PORT:-3000}"
 
-# Default app dir: home of deploy user (non-root friendly)
+# Default app dir: prefer existing install locations
 if [ -z "${APP_DIR:-}" ]; then
-  if [ "$(id -u)" -eq 0 ]; then
+  if [ -d /opt/deals/.git ]; then
+    APP_DIR="/opt/deals"
+  elif [ -d "${HOME}/deals/.git" ]; then
+    APP_DIR="${HOME}/deals"
+  elif [ -d "/home/${DEPLOY_USER}/deals/.git" ]; then
     APP_DIR="/home/${DEPLOY_USER}/deals"
+  elif [ "$(id -u)" -eq 0 ]; then
+    APP_DIR="/opt/deals"
   else
     APP_DIR="${HOME}/deals"
   fi
