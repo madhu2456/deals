@@ -153,6 +153,9 @@ EOF
 }
 
 pull_or_clone() {
+  # Avoid "dubious ownership" when directory was created by another user
+  git config --global --add safe.directory "${APP_DIR}" 2>/dev/null || true
+
   if [ -d "${APP_DIR}/.git" ]; then
     echo "Updating repository..."
     git -C "${APP_DIR}" fetch origin

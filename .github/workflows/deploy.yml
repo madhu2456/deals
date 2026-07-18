@@ -83,6 +83,9 @@ jobs:
 
             cd "${APP_DIR}"
 
+            # Avoid git "dubious ownership" after chown between root/madhu
+            git config --global --add safe.directory "${APP_DIR}" || true
+
             # 1) Pull FIRST so we never run a stale deploy.sh that still requires root
             echo "Pulling latest main..."
             git fetch origin
