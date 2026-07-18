@@ -15,6 +15,12 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
+      // Explicit for Google Search / Googlebot (sitemap + public pages)
+      {
+        userAgent: "Googlebot",
+        allow: "/",
+        disallow: ["/admin", "/admin/", "/api/", "/api"],
+      },
       // Explicit allow for major AI / answer-engine crawlers
       {
         userAgent: "GPTBot",
@@ -73,6 +79,7 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${site}/sitemap.xml`,
-    host: site,
+    // Hostname only (no scheme) — Yandex Host directive; Google ignores this line
+    host: site.replace(/^https?:\/\//, ""),
   };
 }

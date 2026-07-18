@@ -2,8 +2,12 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+/**
+ * Cached sitemap for reliable crawler fetches (Search Console "Couldn't fetch"
+ * is often a timeout/transient failure on uncached force-dynamic responses).
+ * Regenerates at most once per hour.
+ */
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl();
