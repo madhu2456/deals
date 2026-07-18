@@ -33,10 +33,23 @@ echo "    BRANCH=${BRANCH}"
 # Helpers
 # ---------------------------------------------------------------------------
 need_root() {
-  if [ "$(id -u)" -ne 0 ]; then
-    echo "Please run as root (or via sudo)."
-    exit 1
+  if [ "$(id -u)" -eq 0 ]; then
+    return 0
   fi
+  # Re-exec with passwordless sudo when available (GitHub Actions / CI)
+  if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    echo "Elevating to root via sudo..."
+    exec sudo -E \
+      APP_DIR="${APP_DIR}" \
+      BRANCH="${BRANCH}" \
+      DOMAIN="${DOMAIN}" \
+      REPO_URL="${REPO_URL}" \
+      APP_PORT="${APP_PORT}" \
+      "$0" "$@"
+  fi
+  echo "Please run as root, or configure passwordless sudo for this user."
+  echo "  Tip: set GitHub secret DEPLOY_USER=root"
+  exit 1
 }
 
 install_docker() {

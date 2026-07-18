@@ -111,10 +111,17 @@ jobs:
             fi
 
             cd "${APP_DIR}"
-            export APP_DIR
-            export BRANCH=main
+            export APP_DIR BRANCH=main DOMAIN=deals.madhudadi.in
             chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
-            ./deploy.sh --update
+            # Prefer root; deploy.sh will also try passwordless sudo if needed
+            if [ "$(id -u)" -eq 0 ]; then
+              ./deploy.sh --update
+            elif command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
+              sudo -E APP_DIR="${APP_DIR}" BRANCH=main ./deploy.sh --update
+            else
+              echo "Connecting as $(whoami). Set DEPLOY_USER=root or enable passwordless sudo."
+              ./deploy.sh --update
+            fi
 
             echo "Waiting for health..."
             for i in $(seq 1 30); do
