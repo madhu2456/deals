@@ -3,6 +3,10 @@ import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  GoogleTagManager,
+  GoogleTagManagerNoscript,
+} from "./components/GoogleTagManager";
+import {
   JsonLd,
   organizationSchema,
   websiteSchema,

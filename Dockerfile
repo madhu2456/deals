@@ -26,7 +26,9 @@ COPY . .
 
 # Build-time placeholders (real secrets come from runtime .env)
 ARG NEXT_PUBLIC_SITE_URL=https://deals.madhudadi.in
+ARG NEXT_PUBLIC_GTM_ID=GTM-PT2ZHD3W
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_GTM_ID=$NEXT_PUBLIC_GTM_ID
 ENV DATABASE_URL="file:./build.db"
 ENV ADMIN_USERNAME="build"
 ENV ADMIN_PASSWORD="build"
