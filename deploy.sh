@@ -4,12 +4,12 @@
 #
 # First-time bootstrap (once, as root):
 #   export DEPLOY_USER=madhu
-#   git clone https://github.com/madhu2456/deals.git /home/madhu/deals
-#   cd /home/madhu/deals && chmod +x deploy.sh docker/entrypoint.sh
+#   git clone https://github.com/madhu2456/deals.git /opt/deals
+#   cd /opt/deals && chmod +x deploy.sh docker/entrypoint.sh
 #   sudo ./deploy.sh
 #
 # Updates as madhu (GitHub Actions):
-#   cd /home/madhu/deals && ./deploy.sh --update
+#   cd /opt/deals && ./deploy.sh --update
 # =============================================================================
 
 set -euo pipefail
@@ -20,21 +20,8 @@ REPO_URL="${REPO_URL:-https://github.com/madhu2456/deals.git}"
 BRANCH="${BRANCH:-main}"
 DOMAIN="${DOMAIN:-deals.madhudadi.in}"
 APP_PORT="${APP_PORT:-3000}"
-
-# Default app dir: prefer existing install locations
-if [ -z "${APP_DIR:-}" ]; then
-  if [ -d /opt/deals/.git ]; then
-    APP_DIR="/opt/deals"
-  elif [ -d "${HOME}/deals/.git" ]; then
-    APP_DIR="${HOME}/deals"
-  elif [ -d "/home/${DEPLOY_USER}/deals/.git" ]; then
-    APP_DIR="/home/${DEPLOY_USER}/deals"
-  elif [ "$(id -u)" -eq 0 ]; then
-    APP_DIR="/opt/deals"
-  else
-    APP_DIR="${HOME}/deals"
-  fi
-fi
+# Always deploy from /opt/deals (override only if you really must)
+APP_DIR="${APP_DIR:-/opt/deals}"
 
 MODE="bootstrap"
 if [ "${1:-}" = "--update" ] || [ "${1:-}" = "update" ]; then

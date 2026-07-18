@@ -1,4 +1,4 @@
-# Deploy as non-root user "madhu" (no root SSH).
+# Deploy as non-root user "madhu" to /opt/deals only.
 #
 # Required secrets:
 #   DEPLOY_HOST     — server IP
@@ -6,8 +6,6 @@
 #   DEPLOY_SSH_KEY  — private key authorized for madhu
 #
 # Optional:
-#   DEPLOY_PATH     — e.g. /opt/deals or /home/madhu/deals
-#                     (auto-detects /opt/deals then ~/deals if unset)
 #   DEPLOY_PORT     — SSH port (default 22)
 
 name: Deploy to DigitalOcean
@@ -60,7 +58,7 @@ jobs:
             echo "::error::DEPLOY_SSH_KEY missing END line (truncated paste)."
             exit 1
           fi
-          echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER}"
+          echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
 
       - name: Deploy over SSH as madhu
         uses: appleboy/ssh-action@v1.2.0
@@ -75,22 +73,12 @@ jobs:
           script: |
             set -euo pipefail
 
-            APP_DIR="${{ secrets.DEPLOY_PATH }}"
-            if [ -z "${APP_DIR}" ]; then
-              APP_DIR="${HOME}/deals"
-            fi
-
+            APP_DIR=/opt/deals
             echo "User=$(whoami) APP_DIR=${APP_DIR}"
 
             if [ ! -d "${APP_DIR}/.git" ]; then
               echo "ERROR: App not found at ${APP_DIR}."
-              echo "On server as root, run once:"
-              echo "  export DEPLOY_USER=madhu APP_DIR=/home/madhu/deals"
-              echo "  git clone https://github.com/madhu2456/deals.git /home/madhu/deals"
-              echo "  cd /home/madhu/deals && chmod +x deploy.sh docker/entrypoint.sh"
-              echo "  usermod -aG docker madhu"
-              echo "  chown -R madhu:madhu /home/madhu/deals"
-              echo "  sudo -E ./deploy.sh"
+              echo "Clone once: git clone https://github.com/madhu2456/deals.git /opt/deals"
               exit 1
             fi
 
