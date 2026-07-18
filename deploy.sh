@@ -183,6 +183,24 @@ pull_or_clone() {
 compose_up() {
   cd "${APP_DIR}"
   echo "Building and starting containers..."
+
+  # Stop previous stack / anything holding APP_PORT (default 3000)
+  docker compose down --remove-orphans 2>/dev/null || true
+  if command -v docker >/dev/null 2>&1; then
+    # Stop other containers publishing the same host port
+    for id in $(docker ps -q --filter "publish=${APP_PORT}" 2>/dev/null || true); do
+      echo "  Stopping container on port ${APP_PORT}: ${id}"
+      docker stop "${id}" >/dev/null 2>&1 || true
+      docker rm "${id}" >/dev/null 2>&1 || true
+    done
+  fi
+  # Last resort: free host process on the port (if any)
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${APP_PORT}/tcp" 2>/dev/null || true
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -ti ":${APP_PORT}" | xargs -r kill 2>/dev/null || true
+  fi
+
   docker compose pull 2>/dev/null || true
   docker compose up -d --build --remove-orphans
 
