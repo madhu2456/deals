@@ -243,25 +243,24 @@ compose_up() {
   cd "${APP_DIR}"
   echo "Building and starting containers..."
 
-  # Stop previous stack / anything holding APP_PORT (default 3000)
+  # Tear down previous stack + force-remove named container if stuck
   docker compose down --remove-orphans 2>/dev/null || true
+  docker rm -f deals-app 2>/dev/null || true
+
   if command -v docker >/dev/null 2>&1; then
-    # Stop other containers publishing the same host port
+    for id in $(docker ps -aq --filter "name=deals-app" 2>/dev/null || true); do
+      echo "  Removing leftover container: ${id}"
+      docker rm -f "${id}" >/dev/null 2>&1 || true
+    done
     for id in $(docker ps -q --filter "publish=${APP_PORT}" 2>/dev/null || true); do
-      echo "  Stopping container on port ${APP_PORT}: ${id}"
+      echo "  Stopping container on host port ${APP_PORT}: ${id}"
       docker stop "${id}" >/dev/null 2>&1 || true
       docker rm "${id}" >/dev/null 2>&1 || true
     done
   fi
-  # Last resort: free host process on the port (if any)
-  if command -v fuser >/dev/null 2>&1; then
-    fuser -k "${APP_PORT}/tcp" 2>/dev/null || true
-  elif command -v lsof >/dev/null 2>&1; then
-    lsof -ti ":${APP_PORT}" | xargs -r kill 2>/dev/null || true
-  fi
 
   docker compose pull 2>/dev/null || true
-  docker compose up -d --build --remove-orphans
+  docker compose up -d --build --remove-orphans --force-recreate
 
   if [ -f .env ] && grep -q '^RUN_SEED=true' .env 2>/dev/null; then
     sleep 5
@@ -271,6 +270,7 @@ compose_up() {
 
   echo "Container status:"
   docker compose ps
+  docker compose logs --tail=30 || true
 }
 
 fix_ownership() {
