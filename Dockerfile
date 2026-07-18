@@ -40,16 +40,22 @@ RUN pnpm exec prisma migrate deploy
 RUN pnpm build
 
 # ---------- runner ----------
-FROM base AS runner
+# Slim runtime: no need for corepack/pnpm — entrypoint uses node_modules/.bin/*
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV HOME=/tmp
 
 RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
+  && useradd --system --uid 1001 --gid nodejs --home /tmp nextjs
 
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
