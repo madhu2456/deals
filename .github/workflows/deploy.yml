@@ -1,20 +1,20 @@
-# Deploy Deals to DigitalOcean / Netcup on push to main.
+# Deploy as non-root user "madhu" (no root SSH).
 #
-# Required secrets (Settings → Secrets and variables → Actions):
+# Required secrets:
 #   DEPLOY_HOST     — server IP
-#   DEPLOY_USER     — SSH user (e.g. root)
-#   DEPLOY_SSH_KEY  — FULL private key (see notes below)
+#   DEPLOY_USER     — madhu
+#   DEPLOY_SSH_KEY  — private key authorized for madhu
 #
 # Optional:
+#   DEPLOY_PATH     — default /home/madhu/deals
 #   DEPLOY_PORT     — SSH port (default 22)
-#   DEPLOY_PATH     — default /opt/deals
 #
-# DEPLOY_SSH_KEY must look like:
-#   -----BEGIN OPENSSH PRIVATE KEY-----
-#   ....many lines....
-#   -----END OPENSSH PRIVATE KEY-----
-# Paste the private file only (NOT .pub). No quotes. Include BEGIN/END lines.
-# Prefer creating the key on your laptop, add .pub to server authorized_keys.
+# One-time on server (as root):
+#   usermod -aG docker madhu
+#   # if app was under /opt/deals as root:
+#   mkdir -p /home/madhu && mv /opt/deals /home/madhu/deals || true
+#   chown -R madhu:madhu /home/madhu/deals
+#   # ensure madhu can SSH (authorized_keys under /home/madhu/.ssh)
 
 name: Deploy to DigitalOcean
 
@@ -44,93 +44,75 @@ jobs:
           set -e
           missing=0
           if [ -z "$DEPLOY_HOST" ]; then
-            echo "::error::DEPLOY_HOST is missing. Set your server IP."
+            echo "::error::DEPLOY_HOST is missing."
             missing=1
           fi
           if [ -z "$DEPLOY_USER" ]; then
-            echo "::error::DEPLOY_USER is missing (e.g. root)."
+            echo "::error::DEPLOY_USER is missing. Set to: madhu"
             missing=1
           fi
           if [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "::error::DEPLOY_SSH_KEY is missing."
+            echo "::error::DEPLOY_SSH_KEY is missing (private key for madhu)."
             missing=1
           fi
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
-
-          # Validate private-key shape (do not print the key)
           if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN.*PRIVATE KEY"; then
-            echo "::error::DEPLOY_SSH_KEY does not look like a private key."
-            echo "It must contain a line like: -----BEGIN OPENSSH PRIVATE KEY-----"
-            echo "You may have pasted the .pub file, a fingerprint, or an incomplete key."
+            echo "::error::DEPLOY_SSH_KEY must be a private key (BEGIN ... PRIVATE KEY)."
             exit 1
           fi
           if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "END.*PRIVATE KEY"; then
-            echo "::error::DEPLOY_SSH_KEY is missing the END line (paste was cut off)."
+            echo "::error::DEPLOY_SSH_KEY missing END line (truncated paste)."
             exit 1
           fi
-          if printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN OPENSSH PUBLIC KEY\|ssh-ed25519\|ssh-rsa "; then
-            # public keys often start with ssh-ed25519 / ssh-rsa (single line)
-            if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN.*PRIVATE KEY"; then
-              echo "::error::DEPLOY_SSH_KEY looks like a PUBLIC key. Use the private file (no .pub)."
-              exit 1
-            fi
-          fi
+          echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER}"
 
-          # Normalize Windows newlines if someone pasted from Windows
-          KEY_LINES=$(printf '%s' "$DEPLOY_SSH_KEY" | tr -d '\r' | wc -l)
-          echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} key_lines≈${KEY_LINES}"
-
-      - name: Deploy over SSH
+      - name: Deploy over SSH as madhu
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          # Helpful when key was pasted with odd whitespace
           passphrase: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
           script_stop: true
           command_timeout: 25m
           script: |
             set -euo pipefail
+
             APP_DIR="${{ secrets.DEPLOY_PATH }}"
             if [ -z "${APP_DIR}" ]; then
-              APP_DIR="/opt/deals"
+              APP_DIR="${HOME}/deals"
             fi
 
-            echo "Deploying to ${APP_DIR}..."
+            echo "User=$(whoami) APP_DIR=${APP_DIR}"
 
             if [ ! -d "${APP_DIR}/.git" ]; then
               echo "ERROR: App not found at ${APP_DIR}."
-              echo "Bootstrap once on the server:"
-              echo "  git clone https://github.com/madhu2456/deals.git ${APP_DIR}"
-              echo "  cd ${APP_DIR} && chmod +x deploy.sh docker/entrypoint.sh && ./deploy.sh"
+              echo "On server as root, run once:"
+              echo "  export DEPLOY_USER=madhu APP_DIR=/home/madhu/deals"
+              echo "  git clone https://github.com/madhu2456/deals.git /home/madhu/deals"
+              echo "  cd /home/madhu/deals && chmod +x deploy.sh docker/entrypoint.sh"
+              echo "  usermod -aG docker madhu"
+              echo "  chown -R madhu:madhu /home/madhu/deals"
+              echo "  sudo -E ./deploy.sh"
               exit 1
             fi
 
             cd "${APP_DIR}"
-            export APP_DIR BRANCH=main DOMAIN=deals.madhudadi.in
+            export APP_DIR BRANCH=main DOMAIN=deals.madhudadi.in DEPLOY_USER=madhu
             chmod +x deploy.sh docker/entrypoint.sh 2>/dev/null || true
-            # Prefer root; deploy.sh will also try passwordless sudo if needed
-            if [ "$(id -u)" -eq 0 ]; then
-              ./deploy.sh --update
-            elif command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
-              sudo -E APP_DIR="${APP_DIR}" BRANCH=main ./deploy.sh --update
-            else
-              echo "Connecting as $(whoami). Set DEPLOY_USER=root or enable passwordless sudo."
-              ./deploy.sh --update
-            fi
+            ./deploy.sh --update
 
-            echo "Waiting for health..."
-            for i in $(seq 1 30); do
+            echo "Waiting for health on :3000..."
+            for i in $(seq 1 40); do
               if curl -fsS "http://127.0.0.1:3000/" >/dev/null 2>&1; then
                 echo "Healthy."
                 exit 0
               fi
-              sleep 2
+              sleep 3
             done
             echo "Health check timed out:"
-            docker compose -f "${APP_DIR}/docker-compose.yml" logs --tail=80 || true
+            docker compose logs --tail=100 || true
             exit 1

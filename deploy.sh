@@ -1,23 +1,34 @@
 #!/bin/bash
 # =============================================================================
-# Deals — DigitalOcean droplet bootstrap + update
+# Deals — server bootstrap + non-root updates (user: madhu)
 #
-# First-time on a fresh Ubuntu droplet (as root or with sudo):
-#   git clone https://github.com/madhu2456/deals.git /opt/deals
-#   cd /opt/deals && chmod +x deploy.sh docker/entrypoint.sh && ./deploy.sh
+# First-time bootstrap (once, as root):
+#   export DEPLOY_USER=madhu
+#   git clone https://github.com/madhu2456/deals.git /home/madhu/deals
+#   cd /home/madhu/deals && chmod +x deploy.sh docker/entrypoint.sh
+#   sudo ./deploy.sh
 #
-# Later updates (also used by GitHub Actions over SSH):
-#   cd /opt/deals && ./deploy.sh --update
+# Updates as madhu (GitHub Actions):
+#   cd /home/madhu/deals && ./deploy.sh --update
 # =============================================================================
 
 set -euo pipefail
 
 APP_NAME="deals"
-APP_DIR="${APP_DIR:-/opt/deals}"
+DEPLOY_USER="${DEPLOY_USER:-madhu}"
 REPO_URL="${REPO_URL:-https://github.com/madhu2456/deals.git}"
 BRANCH="${BRANCH:-main}"
 DOMAIN="${DOMAIN:-deals.madhudadi.in}"
 APP_PORT="${APP_PORT:-3000}"
+
+# Default app dir: home of deploy user (non-root friendly)
+if [ -z "${APP_DIR:-}" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
+    APP_DIR="/home/${DEPLOY_USER}/deals"
+  else
+    APP_DIR="${HOME}/deals"
+  fi
+fi
 
 MODE="bootstrap"
 if [ "${1:-}" = "--update" ] || [ "${1:-}" = "update" ]; then
@@ -28,28 +39,34 @@ echo "=== Deals deployment (${MODE}) ==="
 echo "    APP_DIR=${APP_DIR}"
 echo "    DOMAIN=${DOMAIN}"
 echo "    BRANCH=${BRANCH}"
+echo "    USER=$(whoami) (target deploy user: ${DEPLOY_USER})"
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 need_root() {
-  if [ "$(id -u)" -eq 0 ]; then
-    return 0
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Bootstrap requires root once. Run: sudo $0"
+    exit 1
   fi
-  # Re-exec with passwordless sudo when available (GitHub Actions / CI)
-  if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-    echo "Elevating to root via sudo..."
-    exec sudo -E \
-      APP_DIR="${APP_DIR}" \
-      BRANCH="${BRANCH}" \
-      DOMAIN="${DOMAIN}" \
-      REPO_URL="${REPO_URL}" \
-      APP_PORT="${APP_PORT}" \
-      "$0" "$@"
+}
+
+need_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Docker is not installed. Run full bootstrap as root first: sudo ./deploy.sh"
+    exit 1
   fi
-  echo "Please run as root, or configure passwordless sudo for this user."
-  echo "  Tip: set GitHub secret DEPLOY_USER=root"
-  exit 1
+  if ! docker info >/dev/null 2>&1; then
+    echo "Cannot talk to Docker as $(whoami)."
+    echo "Add user to docker group (as root):"
+    echo "  usermod -aG docker ${DEPLOY_USER}"
+    echo "  # then log out/in, or: newgrp docker"
+    exit 1
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    echo "docker compose plugin missing. Install as root: apt-get install -y docker-compose-plugin"
+    exit 1
+  fi
 }
 
 install_docker() {
@@ -70,6 +87,16 @@ install_docker() {
   fi
 }
 
+ensure_deploy_user() {
+  if ! id "${DEPLOY_USER}" >/dev/null 2>&1; then
+    echo "Creating user ${DEPLOY_USER}..."
+    useradd -m -s /bin/bash "${DEPLOY_USER}"
+  fi
+  usermod -aG docker "${DEPLOY_USER}" || true
+  # Passwordless docker is via group membership (not sudo)
+  echo "User ${DEPLOY_USER} is in docker group."
+}
+
 ensure_env() {
   if [ ! -f "${APP_DIR}/.env" ]; then
     echo "Creating .env with secure defaults..."
@@ -87,6 +114,9 @@ RUN_SEED=true
 NODE_ENV=production
 EOF
     chmod 600 "${APP_DIR}/.env"
+    if id "${DEPLOY_USER}" >/dev/null 2>&1; then
+      chown "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_DIR}/.env"
+    fi
     echo "  .env written. Initial admin password: ${ADMIN_PASSWORD}"
     echo "  (also saved in ${APP_DIR}/.env — rotate after first login)"
   else
@@ -130,27 +160,26 @@ EOF
 }
 
 pull_or_clone() {
-  mkdir -p "${APP_DIR}"
   if [ -d "${APP_DIR}/.git" ]; then
     echo "Updating repository..."
     git -C "${APP_DIR}" fetch origin
     git -C "${APP_DIR}" checkout "${BRANCH}"
     git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}"
   else
-    # If directory has only deploy leftovers, clone into it
-    if [ -z "$(ls -A "${APP_DIR}" 2>/dev/null | grep -v '^\.env$' || true)" ]; then
-      echo "Cloning ${REPO_URL}..."
-      git clone --branch "${BRANCH}" "${REPO_URL}" "${APP_DIR}"
-    else
+    mkdir -p "$(dirname "${APP_DIR}")"
+    if [ -d "${APP_DIR}" ] && [ -n "$(ls -A "${APP_DIR}" 2>/dev/null | grep -v '^\.env$' || true)" ]; then
       echo "Cloning into temp then merging..."
       TMP="$(mktemp -d)"
       git clone --branch "${BRANCH}" "${REPO_URL}" "${TMP}"
-      # Preserve .env
       if [ -f "${APP_DIR}/.env" ]; then
         cp "${APP_DIR}/.env" "${TMP}/.env"
       fi
+      # Preserve data if any
       rm -rf "${APP_DIR}"
       mv "${TMP}" "${APP_DIR}"
+    else
+      echo "Cloning ${REPO_URL}..."
+      git clone --branch "${BRANCH}" "${REPO_URL}" "${APP_DIR}"
     fi
   fi
 }
@@ -161,9 +190,7 @@ compose_up() {
   docker compose pull 2>/dev/null || true
   docker compose up -d --build --remove-orphans
 
-  # After first successful seed, stop re-seeding on every boot
-  if grep -q '^RUN_SEED=true' .env 2>/dev/null; then
-    # Wait a bit for container to finish seed, then flip flag
+  if [ -f .env ] && grep -q '^RUN_SEED=true' .env 2>/dev/null; then
     sleep 5
     sed -i 's/^RUN_SEED=true/RUN_SEED=false/' .env || true
     echo "  RUN_SEED set to false for future restarts."
@@ -173,29 +200,48 @@ compose_up() {
   docker compose ps
 }
 
+fix_ownership() {
+  if [ "$(id -u)" -eq 0 ] && id "${DEPLOY_USER}" >/dev/null 2>&1; then
+    chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_DIR}"
+    echo "Ownership of ${APP_DIR} → ${DEPLOY_USER}"
+  fi
+}
+
 # ---------------------------------------------------------------------------
-# Update path (used by CI)
+# Update path (non-root: run as madhu)
 # ---------------------------------------------------------------------------
 if [ "${MODE}" = "update" ]; then
-  need_root
+  need_docker
+
   if [ ! -d "${APP_DIR}/.git" ]; then
-    echo "App not bootstrapped at ${APP_DIR}. Run without --update first."
+    echo "App not found at ${APP_DIR}."
+    echo "Bootstrap once (as root):"
+    echo "  export DEPLOY_USER=${DEPLOY_USER}"
+    echo "  export APP_DIR=${APP_DIR}"
+    echo "  sudo -E ./deploy.sh"
     exit 1
   fi
+
+  if [ ! -w "${APP_DIR}" ]; then
+    echo "No write access to ${APP_DIR} as $(whoami)."
+    echo "As root: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
+    exit 1
+  fi
+
   pull_or_clone
   ensure_env
-  # Ensure deploy.sh stays executable after pull
-  chmod +x "${APP_DIR}/deploy.sh" 2>/dev/null || true
+  chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
   compose_up
+
   echo ""
   echo "=== Update complete ==="
-  echo "  App:  https://${DOMAIN} (or http://$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo 'YOUR_IP'))"
+  echo "  App:  https://${DOMAIN}"
   echo "  Logs: cd ${APP_DIR} && docker compose logs -f"
   exit 0
 fi
 
 # ---------------------------------------------------------------------------
-# Full bootstrap
+# Full bootstrap (root once) — prepares madhu + /home/madhu/deals
 # ---------------------------------------------------------------------------
 need_root
 
@@ -208,36 +254,60 @@ apt-get install -y git curl ca-certificates openssl ufw
 echo "2. Installing Docker..."
 install_docker
 
-echo "3. Setting up application directory..."
+echo "3. Ensuring deploy user (${DEPLOY_USER})..."
+ensure_deploy_user
+
+echo "4. Application directory ${APP_DIR}..."
+# Ensure home exists
+if [ ! -d "/home/${DEPLOY_USER}" ]; then
+  mkdir -p "/home/${DEPLOY_USER}"
+  chown "${DEPLOY_USER}:${DEPLOY_USER}" "/home/${DEPLOY_USER}"
+fi
 pull_or_clone
-chmod +x "${APP_DIR}/deploy.sh" 2>/dev/null || true
-chmod +x "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
+chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
 
-echo "4. Environment file..."
+echo "5. Environment file..."
 ensure_env
+fix_ownership
 
-echo "5. Building and starting app..."
-compose_up
+echo "6. Building and starting app (as ${DEPLOY_USER})..."
+# Run compose as deploy user so containers are owned correctly
+if [ "$(id -u)" -eq 0 ]; then
+  su - "${DEPLOY_USER}" -c "cd '${APP_DIR}' && docker compose up -d --build --remove-orphans"
+  # Flip seed flag if needed
+  if [ -f "${APP_DIR}/.env" ] && grep -q '^RUN_SEED=true' "${APP_DIR}/.env"; then
+    sleep 5
+    sed -i 's/^RUN_SEED=true/RUN_SEED=false/' "${APP_DIR}/.env" || true
+  fi
+else
+  compose_up
+fi
 
-echo "6. Nginx reverse proxy..."
+echo "7. Nginx reverse proxy..."
 configure_nginx
 
-echo "7. Firewall (optional-friendly defaults)..."
+echo "8. Firewall..."
 if command -v ufw &>/dev/null; then
   ufw allow OpenSSH || true
   ufw allow 'Nginx Full' || true
   ufw --force enable || true
 fi
 
+fix_ownership
+
 echo ""
 echo "=== Deployment complete ==="
-echo "  HTTP:  http://${DOMAIN}  (point DNS A record to this droplet)"
+echo "  HTTP:  http://${DOMAIN}"
+echo "  App:   ${APP_DIR} (owner: ${DEPLOY_USER})"
 echo "  Admin: http://${DOMAIN}/admin"
-echo "  Logs:  cd ${APP_DIR} && docker compose logs -f"
+echo "  Logs:  su - ${DEPLOY_USER} -c 'cd ${APP_DIR} && docker compose logs -f'"
 echo ""
-echo "  SSL (after DNS propagates):"
+echo "  SSL:"
 echo "    apt-get install -y certbot python3-certbot-nginx"
 echo "    certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
 echo ""
-echo "  GitHub Actions: set secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY"
-echo "  then push to ${BRANCH} — workflow runs: ./deploy.sh --update"
+echo "  GitHub Actions secrets:"
+echo "    DEPLOY_USER=madhu"
+echo "    DEPLOY_PATH=${APP_DIR}"
+echo "    DEPLOY_HOST=<server-ip>"
+echo "    DEPLOY_SSH_KEY=<private key for madhu>"
