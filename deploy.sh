@@ -19,8 +19,9 @@ DEPLOY_USER="${DEPLOY_USER:-madhu}"
 REPO_URL="${REPO_URL:-https://github.com/madhu2456/deals.git}"
 BRANCH="${BRANCH:-main}"
 DOMAIN="${DOMAIN:-deals.madhudadi.in}"
-APP_PORT="${APP_PORT:-3000}"
-# Always deploy from /opt/deals (override only if you really must)
+# Host port (localhost). Avoid clash with blog:3001 / enroller:8000
+APP_PORT="${APP_PORT:-3002}"
+# Always deploy from /opt/deals
 APP_DIR="${APP_DIR:-/opt/deals}"
 
 MODE="bootstrap"

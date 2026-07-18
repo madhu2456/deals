@@ -1,3 +1,11 @@
+# Port map (this server):
+#   blog frontend  → 127.0.0.1:3001
+#   deals          → 127.0.0.1:3002  (this service)
+#   udemy-enroller → 0.0.0.0:8000
+#   blog backend   → 127.0.0.1:8001
+#
+# Nginx for deals.madhudadi.in should proxy_pass http://127.0.0.1:3002
+
 services:
   deals:
     build:
@@ -8,11 +16,11 @@ services:
     container_name: deals-app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-3000}:3000"
+      # Bind localhost only — public traffic comes via Nginx
+      - "127.0.0.1:${APP_PORT:-3002}:3000"
     env_file:
       - .env
     environment:
-      # Absolute SQLite path inside the container (volume-backed)
       DATABASE_URL: ${DATABASE_URL:-file:/app/data/deals.db}
       NODE_ENV: production
       PORT: "3000"

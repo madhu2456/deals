@@ -98,11 +98,12 @@ jobs:
             export BRANCH=main
             export DOMAIN=deals.madhudadi.in
             export DEPLOY_USER=madhu
+            export APP_PORT=3002
             ./deploy.sh --update
 
-            echo "Waiting for health on :3000..."
+            echo "Waiting for health on :3002..."
             for i in $(seq 1 40); do
-              if curl -fsS "http://127.0.0.1:3000/" >/dev/null 2>&1; then
+              if curl -fsS "http://127.0.0.1:3002/" >/dev/null 2>&1; then
                 echo "Healthy."
                 exit 0
               fi
