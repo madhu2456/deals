@@ -92,11 +92,13 @@ jobs:
             # Avoid git "dubious ownership" after chown between root/madhu
             git config --global --add safe.directory "${APP_DIR}" || true
 
-            # 1) Pull FIRST so we never run a stale deploy.sh that still requires root
-            echo "Pulling latest main..."
+            # 1) Sync to origin/main EXACTLY (discard any local server edits / root leftovers)
+            echo "Syncing to origin/main (hard reset)..."
             git fetch origin
             git checkout main
-            git pull --ff-only origin main
+            # Keep .env and runtime data; reset only tracked files
+            git reset --hard origin/main
+            git clean -fd -e .env -e data -e 'prisma/*.db' -e 'prisma/*.db-journal'
             chmod +x deploy.sh docker/entrypoint.sh scripts/*.sh 2>/dev/null || true
 
             # 2) Update using latest script (no root required)

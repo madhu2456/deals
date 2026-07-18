@@ -207,17 +207,19 @@ pull_or_clone() {
   fi
 
   if [ -d "${APP_DIR}/.git" ]; then
-    echo "Updating repository..."
+    echo "Updating repository (hard reset to origin/${BRANCH})..."
     if ! git -C "${APP_DIR}" fetch origin; then
       echo "git fetch failed — check ownership of ${APP_DIR} (must be ${DEPLOY_USER})"
       exit 1
     fi
     git -C "${APP_DIR}" checkout "${BRANCH}"
-    if ! git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}"; then
-      echo "git pull failed — often root-owned files under ${APP_DIR}."
+    # Server must match GitHub; discard local edits (preserve .env via clean -e)
+    if ! git -C "${APP_DIR}" reset --hard "origin/${BRANCH}"; then
+      echo "git reset failed — often root-owned files under ${APP_DIR}."
       echo "  Fix once as root: chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${APP_DIR}"
       exit 1
     fi
+    git -C "${APP_DIR}" clean -fd -e .env -e data -e 'prisma/*.db' -e 'prisma/*.db-journal' || true
   else
     mkdir -p "$(dirname "${APP_DIR}")"
     if [ -d "${APP_DIR}" ] && [ -n "$(ls -A "${APP_DIR}" 2>/dev/null | grep -v '^\.env$' || true)" ]; then
