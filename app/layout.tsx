@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import {
   GoogleTagManager,
   GoogleTagManagerNoscript,
@@ -119,6 +120,8 @@ export default function RootLayout({
       className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-dvh flex-col font-sans">
+        <GoogleTagManagerNoscript />
+        <GoogleTagManager />
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />
         <a href="#main-content" className="skip-link">
