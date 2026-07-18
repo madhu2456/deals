@@ -3,11 +3,15 @@
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { trackGetDeal } from "@/lib/analytics";
 
 interface ClaimDealButtonProps {
   dealId: string;
   dealUrl: string;
   brandName?: string;
+  dealSlug?: string;
+  dealTitle?: string;
+  couponCode?: string | null;
   className?: string;
   size?: "default" | "sm" | "lg";
   variant?: "default" | "secondary" | "outline";
@@ -17,15 +21,26 @@ export function ClaimDealButton({
   dealId,
   dealUrl,
   brandName,
+  dealSlug,
+  dealTitle,
+  couponCode,
   className,
   size = "lg",
   variant = "secondary",
 }: ClaimDealButtonProps) {
   const handleClick = () => {
+    trackGetDeal({
+      dealId,
+      dealUrl,
+      brandName,
+      dealSlug,
+      dealTitle,
+      couponCode,
+    });
+
     // Open immediately to avoid popup blockers
     const tab = window.open(dealUrl, "_blank", "noopener,noreferrer");
     if (!tab) {
-      // Fallback when popups are blocked
       window.location.assign(dealUrl);
       return;
     }
@@ -38,6 +53,8 @@ export function ClaimDealButton({
       size={size}
       variant={variant}
       className={cn("min-h-11 gap-2", className)}
+      data-analytics="get_deal"
+      data-deal-id={dealId}
       onClick={handleClick}
       aria-label={
         brandName

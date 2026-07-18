@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import {
   GoogleTagManager,
   GoogleTagManagerNoscript,
 } from "./components/GoogleTagManager";
+// GA4 is configured in GTM (G-THQ1ZPJ4B7). Do not also load gtag.js here or pageviews double-count.
 import {
   JsonLd,
   organizationSchema,

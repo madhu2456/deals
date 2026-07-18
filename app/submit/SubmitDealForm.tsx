@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitDealAction } from "@/lib/actions";
+import { trackSubmitDeal } from "@/lib/analytics";
 
 interface Category {
   id: string;
@@ -44,6 +45,9 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
       const result = await submitDealAction(formData);
 
       if (result.success) {
+        trackSubmitDeal({
+          categoryId: String(formData.get("categoryId") || "") || undefined,
+        });
         setSuccess(true);
         toast.success("Deal submitted for review");
         router.refresh();

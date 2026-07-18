@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { discountLabel, formatRelativeDate } from "@/lib/format";
+import { trackCopyCoupon } from "@/lib/analytics";
 import type { PublicDeal } from "@/lib/data";
 
 interface DealCardProps {
@@ -22,6 +23,13 @@ export function DealCard({ deal }: DealCardProps) {
     if (!deal.couponCode) return;
     try {
       await navigator.clipboard.writeText(deal.couponCode);
+      trackCopyCoupon({
+        couponCode: deal.couponCode,
+        dealId: deal.id,
+        dealSlug: deal.slug,
+        dealTitle: deal.title,
+        brandName: deal.brandName,
+      });
       setCopied(true);
       toast.success("Coupon code copied");
       setTimeout(() => setCopied(false), 1600);

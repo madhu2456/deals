@@ -309,7 +309,13 @@ export default async function DealPage({ params }: DealPageProps) {
                         >
                           {deal.couponCode}
                         </code>
-                        <CopyCodeButton code={deal.couponCode} />
+                        <CopyCodeButton
+                          code={deal.couponCode}
+                          dealId={deal.id}
+                          dealSlug={deal.slug}
+                          dealTitle={deal.title}
+                          brandName={deal.brandName}
+                        />
                       </div>
                     </div>
                   )}
@@ -318,6 +324,9 @@ export default async function DealPage({ params }: DealPageProps) {
                     dealId={deal.id}
                     dealUrl={deal.dealUrl}
                     brandName={deal.brandName}
+                    dealSlug={deal.slug}
+                    dealTitle={deal.title}
+                    couponCode={deal.couponCode}
                     className="mt-4 w-full bg-white text-primary hover:bg-white/90"
                   />
                 </CardContent>
@@ -372,7 +381,14 @@ export default async function DealPage({ params }: DealPageProps) {
                       >
                         {deal.couponCode}
                       </code>
-                      <CopyCodeButton code={deal.couponCode} variant="outline" />
+                      <CopyCodeButton
+                        code={deal.couponCode}
+                        variant="outline"
+                        dealId={deal.id}
+                        dealSlug={deal.slug}
+                        dealTitle={deal.title}
+                        brandName={deal.brandName}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -425,12 +441,23 @@ export default async function DealPage({ params }: DealPageProps) {
             <p className="truncate text-xs text-muted-foreground">{deal.brandName}</p>
           </div>
           {deal.couponCode && (
-            <CopyCodeButton code={deal.couponCode} variant="outline" className="shrink-0" />
+            <CopyCodeButton
+              code={deal.couponCode}
+              variant="outline"
+              className="shrink-0"
+              dealId={deal.id}
+              dealSlug={deal.slug}
+              dealTitle={deal.title}
+              brandName={deal.brandName}
+            />
           )}
           <ClaimDealButton
             dealId={deal.id}
             dealUrl={deal.dealUrl}
             brandName={deal.brandName}
+            dealSlug={deal.slug}
+            dealTitle={deal.title}
+            couponCode={deal.couponCode}
             size="default"
             variant="default"
             className="shrink-0"
