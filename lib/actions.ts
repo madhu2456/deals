@@ -272,9 +272,12 @@ export async function adminDeleteDealAction(id: string) {
   return { success: true as const };
 }
 
-async function parseDealFormData(formData: FormData):
-  | Promise<{ success: true; deal: CreateDealInput }>
-  | Promise<{ success: false; errors: Record<string, string> }> {
+async function parseDealFormData(
+  formData: FormData
+): Promise<
+  | { success: true; deal: CreateDealInput }
+  | { success: false; errors: Record<string, string> }
+> {
   const raw = Object.fromEntries(formData.entries());
 
   const title = String(raw.title || "").trim();
