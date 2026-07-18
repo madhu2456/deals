@@ -1,10 +1,12 @@
-allowBuilds:
-  "@prisma/client": true
-  "@prisma/engines": true
-  esbuild: true
-  prisma: true
-  sharp: true
-  unrs-resolver: true
-ignoredBuiltDependencies:
+# Single-package app (required so pnpm does not error: "packages field missing")
+packages:
+  - "."
+
+# Allow native postinstall builds in Docker / CI
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - esbuild
+  - prisma
   - sharp
   - unrs-resolver

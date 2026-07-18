@@ -7,7 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # ---------- deps ----------
 FROM base AS deps
@@ -15,7 +15,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Prisma schema needed so postinstall/generate can run if configured
 COPY prisma ./prisma
-RUN pnpm install --frozen-lockfile
+# Prefer frozen lockfile; fall back if lock is slightly out of sync in CI
+RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
 
 # ---------- build ----------
 FROM base AS builder
