@@ -1,16 +1,20 @@
-# Deploy Deals to a DigitalOcean droplet on every push to main.
+# Deploy Deals to DigitalOcean / Netcup on push to main.
 #
-# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
-#   DEPLOY_HOST     — droplet IP or hostname (e.g. 167.99.x.x)
-#   DEPLOY_USER     — SSH user (usually root)
-#   DEPLOY_SSH_KEY  — full private key (including -----BEGIN ... END----- lines)
+# Required secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST     — server IP
+#   DEPLOY_USER     — SSH user (e.g. root)
+#   DEPLOY_SSH_KEY  — FULL private key (see notes below)
 #
 # Optional:
 #   DEPLOY_PORT     — SSH port (default 22)
-#   DEPLOY_PATH     — app directory on server (default /opt/deals)
+#   DEPLOY_PATH     — default /opt/deals
 #
-# First-time: SSH into the droplet and run ./deploy.sh once (bootstrap).
-# After that, this workflow handles updates.
+# DEPLOY_SSH_KEY must look like:
+#   -----BEGIN OPENSSH PRIVATE KEY-----
+#   ....many lines....
+#   -----END OPENSSH PRIVATE KEY-----
+# Paste the private file only (NOT .pub). No quotes. Include BEGIN/END lines.
+# Prefer creating the key on your laptop, add .pub to server authorized_keys.
 
 name: Deploy to DigitalOcean
 
@@ -40,24 +44,43 @@ jobs:
           set -e
           missing=0
           if [ -z "$DEPLOY_HOST" ]; then
-            echo "::error::Secret DEPLOY_HOST is missing or empty. Set it to your droplet IP (e.g. 167.99.x.x)."
+            echo "::error::DEPLOY_HOST is missing. Set your server IP."
             missing=1
           fi
           if [ -z "$DEPLOY_USER" ]; then
-            echo "::error::Secret DEPLOY_USER is missing or empty. Set it to your SSH user (usually root)."
+            echo "::error::DEPLOY_USER is missing (e.g. root)."
             missing=1
           fi
           if [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "::error::Secret DEPLOY_SSH_KEY is missing or empty. Paste the full private SSH key."
+            echo "::error::DEPLOY_SSH_KEY is missing."
             missing=1
           fi
           if [ "$missing" -ne 0 ]; then
-            echo ""
-            echo "Fix: GitHub repo → Settings → Secrets and variables → Actions → New repository secret"
-            echo "Required: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY"
             exit 1
           fi
-          echo "Deploy secrets look present (host length: ${#DEPLOY_HOST}, user: $DEPLOY_USER)."
+
+          # Validate private-key shape (do not print the key)
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN.*PRIVATE KEY"; then
+            echo "::error::DEPLOY_SSH_KEY does not look like a private key."
+            echo "It must contain a line like: -----BEGIN OPENSSH PRIVATE KEY-----"
+            echo "You may have pasted the .pub file, a fingerprint, or an incomplete key."
+            exit 1
+          fi
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "END.*PRIVATE KEY"; then
+            echo "::error::DEPLOY_SSH_KEY is missing the END line (paste was cut off)."
+            exit 1
+          fi
+          if printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN OPENSSH PUBLIC KEY\|ssh-ed25519\|ssh-rsa "; then
+            # public keys often start with ssh-ed25519 / ssh-rsa (single line)
+            if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN.*PRIVATE KEY"; then
+              echo "::error::DEPLOY_SSH_KEY looks like a PUBLIC key. Use the private file (no .pub)."
+              exit 1
+            fi
+          fi
+
+          # Normalize Windows newlines if someone pasted from Windows
+          KEY_LINES=$(printf '%s' "$DEPLOY_SSH_KEY" | tr -d '\r' | wc -l)
+          echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} key_lines≈${KEY_LINES}"
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -66,6 +89,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          # Helpful when key was pasted with odd whitespace
+          passphrase: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
           script_stop: true
           command_timeout: 25m
           script: |
@@ -79,7 +104,7 @@ jobs:
 
             if [ ! -d "${APP_DIR}/.git" ]; then
               echo "ERROR: App not found at ${APP_DIR}."
-              echo "First-time bootstrap on the server:"
+              echo "Bootstrap once on the server:"
               echo "  git clone https://github.com/madhu2456/deals.git ${APP_DIR}"
               echo "  cd ${APP_DIR} && chmod +x deploy.sh docker/entrypoint.sh && ./deploy.sh"
               exit 1
@@ -99,6 +124,6 @@ jobs:
               fi
               sleep 2
             done
-            echo "WARNING: health check timed out — check logs:"
+            echo "Health check timed out:"
             docker compose -f "${APP_DIR}/docker-compose.yml" logs --tail=80 || true
             exit 1
