@@ -35,6 +35,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 RUN pnpm exec prisma generate
+# Ensure schema exists if any page still touches the DB during build
+RUN pnpm exec prisma migrate deploy
 RUN pnpm build
 
 # ---------- runner ----------

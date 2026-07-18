@@ -7,6 +7,8 @@ import { getCategories } from "@/lib/data";
 import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Deal Categories — Browse by Topic",
   description:

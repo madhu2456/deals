@@ -19,6 +19,9 @@ import {
 } from "@/lib/seo/json-ld";
 import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
+// Runtime data from SQLite — do not prerender at Docker build time
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     absolute: `${SITE_NAME} — Verified Deals, Coupons & Discounts for Everyone`,

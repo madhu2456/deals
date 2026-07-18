@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Browse Verified Deals & Coupon Codes",
   description:

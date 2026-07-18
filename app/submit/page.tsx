@@ -6,6 +6,8 @@ import { getCategories } from "@/lib/data";
 import { JsonLd, webPageSchema } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Submit a Deal or Coupon Code",
   description:

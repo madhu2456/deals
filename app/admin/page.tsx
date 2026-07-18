@@ -18,6 +18,8 @@ import { getAllDealsAdmin } from "@/lib/data";
 import { formatDate, statusColor } from "@/lib/format";
 import { AdminActions } from "./AdminActions";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Admin Dashboard",
 };

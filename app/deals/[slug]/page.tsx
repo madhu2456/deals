@@ -33,6 +33,8 @@ interface DealPageProps {
   params: Promise<{ slug: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: DealPageProps): Promise<Metadata> {
   const { slug } = await params;
   const deal = await getDealBySlug(slug);

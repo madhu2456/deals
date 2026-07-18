@@ -6,6 +6,8 @@ import { adminCreateDealAction } from "@/lib/actions";
 import { getCategories } from "@/lib/data";
 import { DealForm } from "../../components/DealForm";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Add Deal",
 };
