@@ -2,21 +2,58 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { generateUniqueSlug } from "@/lib/slug";
 
-const CURATED_DEALS = [
+type CuratedDeal = {
+  /** Stable URL slug — keep fixed so re-seeds upsert instead of duplicating */
+  slug: string;
+  title: string;
+  brandName: string;
+  brandUrl: string;
+  dealUrl: string;
+  discountType: string;
+  discountValue: string;
+  originalPrice?: string | null;
+  discountedPrice?: string | null;
+  description: string;
+  categorySlug: string;
+  isFeatured?: boolean;
+  couponCode?: string | null;
+  notes?: string | null;
+};
+
+const CURATED_DEALS: CuratedDeal[] = [
   {
+    // Matches prior seed slugify(title) so production upserts the same row
+    slug: generateUniqueSlug("OpenCode — AI coding agent from $5/month"),
     title: "OpenCode — AI coding agent from $5/month",
     brandName: "OpenCode",
     brandUrl: "https://opencode.ai",
     dealUrl: "https://opencode.ai/go?ref=HHZGW4Q49Z",
     discountType: "FIXED",
     discountValue: "$5/mo",
+    discountedPrice: "$5/mo",
     description:
       "Get OpenCode, an AI coding agent built for the terminal and your editor, starting at $5 per month via this exclusive link. Use the link to claim the offer, then complete signup on OpenCode. Pricing and eligibility are confirmed on the merchant site at checkout.",
     categorySlug: "ai-and-machine-learning",
     isFeatured: true,
-    couponCode: null as string | null,
   },
-] as const;
+  {
+    slug: "pdf2go-free-premium-student-email",
+    title: "PDF2Go — Free Premium with student email",
+    brandName: "PDF2Go",
+    brandUrl: "https://www.pdf2go.com",
+    dealUrl: "https://www.pdf2go.com/?ref_code=d62be546",
+    discountType: "FREE_TIER",
+    discountValue: "Free Premium",
+    originalPrice: "Premium",
+    discountedPrice: "Free",
+    description:
+      "PDF2Go is an online PDF toolkit for editing, converting, merging, and compressing files — free Premium access when you sign up with a school email. In most cases PDF2Go verifies your institution automatically and activates free premium; if not, contact their support. Global offer · Free · Web. Claim via our referral link, then complete signup on PDF2Go.",
+    categorySlug: "productivity",
+    isFeatured: true,
+    notes:
+      "Student email required. Referral: https://www.pdf2go.com/?ref_code=d62be546",
+  },
+];
 
 async function main() {
   console.log("Seeding categories...");
@@ -43,7 +80,8 @@ async function main() {
       continue;
     }
 
-    const slug = generateUniqueSlug(sample.title, []);
+    const slug = sample.slug;
+    const shortDescription = sample.description.slice(0, 140);
 
     await prisma.deal.upsert({
       where: { slug },
@@ -54,11 +92,14 @@ async function main() {
         dealUrl: sample.dealUrl,
         discountType: sample.discountType,
         discountValue: sample.discountValue,
+        originalPrice: sample.originalPrice ?? null,
+        discountedPrice: sample.discountedPrice ?? null,
         description: sample.description,
-        shortDescription: sample.description.slice(0, 120),
+        shortDescription,
         categoryId,
-        isFeatured: sample.isFeatured,
-        couponCode: sample.couponCode,
+        isFeatured: sample.isFeatured ?? false,
+        couponCode: sample.couponCode ?? null,
+        notes: sample.notes ?? null,
         status: "APPROVED",
         approvedAt: new Date(),
       },
@@ -70,11 +111,14 @@ async function main() {
         dealUrl: sample.dealUrl,
         discountType: sample.discountType,
         discountValue: sample.discountValue,
+        originalPrice: sample.originalPrice ?? null,
+        discountedPrice: sample.discountedPrice ?? null,
         description: sample.description,
-        shortDescription: sample.description.slice(0, 120),
+        shortDescription,
         categoryId,
-        isFeatured: sample.isFeatured,
-        couponCode: sample.couponCode,
+        isFeatured: sample.isFeatured ?? false,
+        couponCode: sample.couponCode ?? null,
+        notes: sample.notes ?? null,
         status: "APPROVED",
         approvedAt: new Date(),
       },
