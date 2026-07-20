@@ -53,6 +53,23 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "Student email required. Referral: https://www.pdf2go.com/?ref_code=d62be546",
   },
+  {
+    slug: "down-dog-4-years-free-university",
+    title: "Down Dog — 4 years free for university students",
+    brandName: "Down Dog",
+    brandUrl: "https://www.downdogapp.com",
+    dealUrl: "https://www.downdogapp.com/universities",
+    discountType: "FREE_TIER",
+    discountValue: "4 years free",
+    originalPrice: "Subscription",
+    discountedPrice: "Free (4 years)",
+    description:
+      "University and higher-education students and faculty get four years of free Down Dog access — yoga, fitness, and wellness content at no cost if you qualify. You need a school-issued email from an accredited university or higher education institution. If your school uses .edu addresses, you typically receive free four-year access automatically on signup. Otherwise, apply for free access for your university on Down Dog’s universities page; once accepted, your school domain is added and anyone from your school can sign up for extended free access. Claim via the official universities page, then complete signup on Down Dog. Eligibility and terms are confirmed by Down Dog.",
+    categorySlug: "health-and-wellness",
+    isFeatured: true,
+    notes:
+      "School-issued email required. Official: https://www.downdogapp.com/universities",
+  },
 ];
 
 async function main() {
