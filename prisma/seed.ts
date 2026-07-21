@@ -70,6 +70,24 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "School-issued email required. Official: https://www.downdogapp.com/universities",
   },
+  {
+    slug: "genieai-pro-1-month-founderpass",
+    title: "GenieAI Pro — 1 month free with code FOUNDERPASS",
+    brandName: "GenieAI",
+    brandUrl: "https://www.genieai.co",
+    dealUrl: "https://www.genieai.co",
+    discountType: "FREE_TIER",
+    discountValue: "1 month free",
+    originalPrice: "$75/mo",
+    discountedPrice: "Free (1 month)",
+    couponCode: "FOUNDERPASS",
+    description:
+      "GenieAI is an AI legal assistant for contracts and documents — draft, review, and negotiate with AI built for business teams. New GenieAI users only: create an account with your work email, select the Genie Pro plan, and enter discount code FOUNDERPASS at checkout to get about one month of Pro (typically ~$75 value). Complete payment to start the subscription (main or virtual card works if the merchant accepts it). Optional but recommended: cancel before the trial/period renews if you do not want to continue paying. Eligibility, pricing, and billing terms are confirmed on GenieAI at signup — this deal is for new users only.",
+    categorySlug: "ai-and-machine-learning",
+    isFeatured: true,
+    notes:
+      "New users only. Code FOUNDERPASS on Genie Pro. Work email recommended. Cancel before renewal if trial continues paid.",
+  },
 ];
 
 async function main() {
