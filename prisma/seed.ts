@@ -88,6 +88,24 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "New users only. Code FOUNDERPASS on Genie Pro. Work email recommended. Cancel before renewal if trial continues paid.",
   },
+  {
+    slug: "hidely-vpn-premium-12-months-free",
+    title: "Hidely VPN Premium — 12 months free with code HIDELY-VPN",
+    brandName: "Hidely VPN",
+    brandUrl: "https://play.google.com/store/apps/details?id=com.hidely.hidely_vpn",
+    dealUrl: "https://play.google.com/store/apps/details?id=com.hidely.hidely_vpn",
+    discountType: "FREE_TIER",
+    discountValue: "12 months free",
+    originalPrice: "Premium (12 mo)",
+    discountedPrice: "Free",
+    couponCode: "HIDELY-VPN",
+    description:
+      "Get Hidely VPN Premium for 12 months free with redeem code HIDELY-VPN. How to claim: (1) Download Hidely VPN from the Google Play Store. (2) Complete sign-up and upgrade to the Premium plan. (3) Enter redeem code HIDELY-VPN. Enjoy 12 months of Hidely VPN Premium if the code is still valid. Offer availability, platform support (Play Store), and redemption rules are confirmed in the app — codes can expire or be limited.",
+    categorySlug: "security-and-privacy",
+    isFeatured: true,
+    notes:
+      "Redeem code HIDELY-VPN. Android Play Store flow. Verify code still works in-app.",
+  },
 ];
 
 async function main() {
