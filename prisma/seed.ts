@@ -106,6 +106,23 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "Redeem code HIDELY-VPN. Android Play Store flow. Verify code still works in-app.",
   },
+  {
+    slug: "dashlane-premium-6-months-free",
+    title: "Dashlane Premium — 6 months free",
+    brandName: "Dashlane",
+    brandUrl: "https://www.dashlane.com",
+    dealUrl: "https://www.dashlane.com/cs/d-PEiUZsVsXp",
+    discountType: "FREE_TIER",
+    discountValue: "6 months free",
+    originalPrice: "Premium",
+    discountedPrice: "Free (6 months)",
+    description:
+      "Get Dashlane Premium free for 6 months via this exclusive claim link — secure password manager with cross-device sync, dark web monitoring, and VPN included where eligible. One of the most trusted password managers for personal and work use. Open the claim link, create or sign in to your Dashlane account, and complete any required steps on Dashlane to activate the 6-month Premium offer. Eligibility, region, and plan details are confirmed at checkout on Dashlane; offer can change or expire.",
+    categorySlug: "security-and-privacy",
+    isFeatured: true,
+    notes:
+      "Claim link: https://www.dashlane.com/cs/d-PEiUZsVsXp — verify offer still active.",
+  },
 ];
 
 async function main() {
