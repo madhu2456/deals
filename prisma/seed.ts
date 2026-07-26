@@ -123,6 +123,23 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "Claim link: https://www.dashlane.com/cs/d-PEiUZsVsXp — verify offer still active.",
   },
+  {
+    slug: "google-ai-plus-12-months-free-internshala-india",
+    title: "Google AI Plus — 12 months free via Internshala (India)",
+    brandName: "Google AI Plus",
+    brandUrl: "https://one.google.com",
+    dealUrl: "https://internshala.com/google-ai-plus-free",
+    discountType: "FREE_TIER",
+    discountValue: "12 months free",
+    originalPrice: "Google AI Plus",
+    discountedPrice: "Free (12 months)",
+    description:
+      "Get Google AI Plus free for 12 months via Internshala. How to redeem: go to the Internshala offer page, click “Claim the offer now,” sign in with your Google account, and complete the Google One redemption flow. Requirements: must be in India, personal Google account, valid India-issued payment method and billing address in India. Existing Google One users can also claim. Promo is one-time use per account. After 12 months it may auto-renew — cancel before the free period ends if you do not want to pay. Eligibility, pricing, and renewal terms are confirmed by Google/Internshala at redemption.",
+    categorySlug: "ai-and-machine-learning",
+    isFeatured: true,
+    notes:
+      "India only. Internshala: https://internshala.com/google-ai-plus-free — cancel before auto-renew.",
+  },
 ];
 
 async function main() {
