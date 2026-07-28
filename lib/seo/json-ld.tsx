@@ -56,7 +56,7 @@ export function websiteSchema() {
     url: getSiteUrl(),
     description: SITE_DESCRIPTION,
     publisher: { "@id": `${getSiteUrl()}/#organization` },
-    inLanguage: "en-US",
+    inLanguage: "en-IN",
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -105,7 +105,7 @@ export function webPageSchema({
     description,
     isPartOf: { "@id": `${getSiteUrl()}/#website` },
     about: { "@id": `${getSiteUrl()}/#organization` },
-    inLanguage: "en-US",
+    inLanguage: "en-IN",
     ...(dateModified
       ? {
           dateModified:
@@ -151,6 +151,16 @@ export function itemListSchema({
   };
 }
 
+/** Extract a numeric price from a string like "$29.99", "Free", "6 months free", etc. Returns null if unparseable. */
+function extractPrice(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  // Handle "free" / non-numeric
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const num = parseFloat(cleaned);
+  return Number.isNaN(num) ? null : num;
+}
+
 export function offerSchema(deal: {
   title: string;
   slug: string;
@@ -165,6 +175,7 @@ export function offerSchema(deal: {
   discountedPrice?: string | null;
   logoUrl?: string | null;
   expiryDate?: Date | string | null;
+  approvedAt?: Date | string | null;
   updatedAt?: Date | string | null;
   category: { name: string; slug: string };
 }) {
@@ -175,13 +186,18 @@ export function offerSchema(deal: {
       : "https://schema.org/InStock"
     : "https://schema.org/InStock";
 
+  // ── Price extraction ──────────────────────────────────
+  const priceNum = extractPrice(deal.discountedPrice) ?? extractPrice(deal.originalPrice) ?? 0;
+
   const offer: Record<string, unknown> = {
     "@type": "Offer",
     "@id": `${url}#offer`,
     name: deal.title,
     description: deal.shortDescription || deal.description,
-    // Landing page on our site + merchant URL for claim
-    url,
+    price: priceNum,
+    priceCurrency: "USD",
+    // Landing page on our site (mainEntityOfPage) + merchant URL (url)
+    url: deal.dealUrl,
     mainEntityOfPage: url,
     // Where the shopper redeems the deal
     ...(deal.dealUrl ? { additionalProperty: {
@@ -190,6 +206,22 @@ export function offerSchema(deal: {
       value: deal.dealUrl,
     }} : {}),
     availability,
+    // When the offer first went live (approval date or update date)
+    ...(deal.approvedAt
+      ? {
+          validFrom:
+            typeof deal.approvedAt === "string"
+              ? deal.approvedAt
+              : deal.approvedAt.toISOString(),
+        }
+      : deal.updatedAt
+      ? {
+          validFrom:
+            typeof deal.updatedAt === "string"
+              ? deal.updatedAt
+              : deal.updatedAt.toISOString(),
+        }
+      : {}),
     itemOffered: {
       "@type": "Service",
       name: deal.title,
@@ -214,6 +246,8 @@ export function offerSchema(deal: {
       ? {
           priceSpecification: {
             "@type": "PriceSpecification",
+            price: priceNum,
+            priceCurrency: "USD",
             description: deal.discountValue,
             name: deal.discountValue,
           },

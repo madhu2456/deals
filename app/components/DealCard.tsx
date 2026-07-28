@@ -14,6 +14,15 @@ interface DealCardProps {
   deal: PublicDeal;
 }
 
+/** Compute white or dark text based on background luminance (WCAG 1.4.3). */
+function textColorFor(bgColor: string): string {
+  const r = parseInt(bgColor.slice(1, 3), 16) / 255;
+  const g = parseInt(bgColor.slice(3, 5), 16) / 255;
+  const b = parseInt(bgColor.slice(5, 7), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.6 ? "#1e1b4b" : "#ffffff";
+}
+
 export function DealCard({ deal }: DealCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -58,15 +67,8 @@ export function DealCard({ deal }: DealCardProps) {
         "focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/25"
       )}
     >
-      {/* Full-card navigation layer */}
-      <Link
-        href={href}
-        className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none"
-        aria-label={`View deal: ${deal.title}`}
-      />
-
       {/* Top accent + badges */}
-      <div className="relative z-[1] pointer-events-none">
+      <div className="relative z-[1]">
         <div
           className="h-1.5 w-full"
           style={{
@@ -84,8 +86,8 @@ export function DealCard({ deal }: DealCardProps) {
               </span>
             )}
             <span
-              className="max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-white/95"
-              style={{ backgroundColor: categoryColor }}
+              className="max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-medium"
+              style={{ backgroundColor: categoryColor, color: textColorFor(categoryColor) }}
             >
               {deal.category.name}
             </span>
@@ -110,7 +112,7 @@ export function DealCard({ deal }: DealCardProps) {
       </div>
 
       {/* Brand + content */}
-      <div className="relative z-[1] flex min-w-0 flex-1 flex-col gap-3 px-4 pb-4 pt-3 pointer-events-none">
+      <div className="relative z-[1] flex min-w-0 flex-1 flex-col gap-3 px-4 pb-4 pt-3">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -133,9 +135,10 @@ export function DealCard({ deal }: DealCardProps) {
               />
             ) : (
               <span
-                className="flex h-full w-full items-center justify-center text-white"
+                className="flex h-full w-full items-center justify-center"
                 style={{
                   background: `linear-gradient(145deg, ${categoryColor}, color-mix(in oklab, ${categoryColor} 55%, #1e1b4b))`,
+                  color: textColorFor(categoryColor),
                 }}
               >
                 {initials}
@@ -164,8 +167,13 @@ export function DealCard({ deal }: DealCardProps) {
         </div>
 
         <div className="min-w-0">
-          <h3 className="line-clamp-2 break-words text-[0.95rem] font-semibold leading-snug tracking-tight text-foreground transition-colors duration-200 group-hover:text-primary">
-            {deal.title}
+          <h3 className="line-clamp-2 break-words text-[0.95rem] font-semibold leading-snug tracking-tight">
+            <Link
+              href={href}
+              className="text-foreground transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:underline"
+            >
+              {deal.title}
+            </Link>
           </h3>
           <p className="mt-1.5 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
             {deal.shortDescription || deal.description}
@@ -189,14 +197,14 @@ export function DealCard({ deal }: DealCardProps) {
       </div>
 
       {/* Actions */}
-      <div className="relative z-[1] mt-auto flex items-center gap-2 border-t border-border/80 bg-muted/35 px-3 py-2.5 pointer-events-none">
+      <div className="relative z-[1] mt-auto flex items-center gap-2 border-t border-border/80 bg-muted/35 px-3 py-2.5">
         {deal.couponCode ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
             className={cn(
-              "pointer-events-auto min-h-10 flex-1 gap-1.5 border-dashed bg-card",
+              "min-h-10 flex-1 gap-1.5 border-dashed bg-card",
               "hover:border-primary/40 hover:bg-primary/5"
             )}
             onClick={copyCode}
@@ -225,7 +233,7 @@ export function DealCard({ deal }: DealCardProps) {
         <Button
           asChild
           size="sm"
-          className="pointer-events-auto min-h-10 shrink-0 gap-1.5 px-3.5 shadow-sm"
+          className="min-h-10 shrink-0 gap-1.5 px-3.5 shadow-sm"
         >
           <Link href={href}>
             View

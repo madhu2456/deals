@@ -12,6 +12,15 @@ interface CategoryCardProps {
   dealCount: number;
 }
 
+/** Compute white or dark text based on background luminance (WCAG 1.4.3). */
+function textColorFor(bgColor: string): string {
+  const r = parseInt(bgColor.slice(1, 3), 16) / 255;
+  const g = parseInt(bgColor.slice(3, 5), 16) / 255;
+  const b = parseInt(bgColor.slice(5, 7), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.6 ? "#1e1b4b" : "#ffffff";
+}
+
 export function CategoryCard({
   name,
   slug,
@@ -45,7 +54,7 @@ export function CategoryCard({
           style={{ backgroundColor: color }}
           aria-hidden="true"
         >
-          <Icon className="h-6 w-6 text-white" />
+          <Icon className="h-6 w-6" style={{ color: textColorFor(color) }} />
         </div>
         <ArrowUpRight
           className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100 group-focus-visible:opacity-100"

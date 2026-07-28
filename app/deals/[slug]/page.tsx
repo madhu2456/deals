@@ -61,11 +61,11 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
       title,
       description,
       url: absoluteUrl(path),
-      type: "website",
+      type: "product",
       images: deal.logoUrl
         ? [{ url: deal.logoUrl, alt: deal.brandName }]
         : [{ url: absoluteUrl("/icon-512.png"), alt: "Deals" }],
-    },
+    } as Metadata["openGraph"],
     twitter: {
       card: "summary",
       title,

@@ -6,6 +6,7 @@ import {
   GoogleTagManager,
   GoogleTagManagerNoscript,
 } from "./components/GoogleTagManager";
+import CookieConsentBanner from "./components/CookieConsent";
 // GA4 is configured in GTM (G-THQ1ZPJ4B7). Do not also load gtag.js here or pageviews double-count.
 import {
   JsonLd,
@@ -65,20 +66,12 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
-    images: [
-      {
-        url: absoluteUrl("/icon-512.png"),
-        width: 512,
-        height: 512,
-        alt: SITE_NAME,
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/icon-512.png")],
+    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: SITE_NAME }],
   },
   robots: {
     index: true,
@@ -122,6 +115,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-dvh flex-col font-sans">
         <GoogleTagManagerNoscript />
+        <CookieConsentBanner />
         <GoogleTagManager />
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />

@@ -1,15 +1,22 @@
+"use client";
+
 import Script from "next/script";
+import { useCookieConsent } from "./CookieConsent";
 
 /** Default container; override with NEXT_PUBLIC_GTM_ID */
 export const GTM_ID =
   process.env.NEXT_PUBLIC_GTM_ID?.trim() || "GTM-PT2ZHD3W";
 
 /**
- * GTM script — load after hydration of the page becomes interactive.
+ * GTM script — loads only after cookie consent is explicitly accepted.
  * Place inside <body> (or via next/script root layout).
  */
 export function GoogleTagManager() {
+  const { consent } = useCookieConsent();
+
   if (!GTM_ID) return null;
+  // Only load GTM when consent has been explicitly accepted
+  if (consent !== "accepted") return null;
 
   return (
     <Script id="google-tag-manager" strategy="afterInteractive">

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Transparency about how affiliate and referral links work on the Deals directory.",
   alternates: { canonical: "/affiliate-disclosure" },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 export default function AffiliateDisclosurePage() {

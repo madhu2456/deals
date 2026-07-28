@@ -26,6 +26,13 @@ export const metadata: Metadata = {
       "Search and filter verified deals, coupon codes, and exclusive discounts.",
     url: absoluteUrl("/deals"),
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Browse Verified Deals & Coupon Codes",
+    description:
+      "Search and filter verified deals, coupon codes, and exclusive discounts.",
+    images: [absoluteUrl("/icon-512.png")],
+  },
 };
 
 interface DealsPageProps {

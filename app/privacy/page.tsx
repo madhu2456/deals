@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     "How Deals collects, uses, and protects your information when you browse or submit a deal.",
   alternates: { canonical: "/privacy" },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPage() {

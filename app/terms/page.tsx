@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Terms governing your use of the Deals website, deal submissions, and directory listings.",
   alternates: { canonical: "/terms" },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsPage() {

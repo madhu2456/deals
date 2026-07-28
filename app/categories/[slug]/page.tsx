@@ -19,6 +19,15 @@ import {
 } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/site";
 
+/** Compute white or dark text based on background luminance (WCAG 1.4.3). */
+function textColorFor(bgColor: string): string {
+  const r = parseInt(bgColor.slice(1, 3), 16) / 255;
+  const g = parseInt(bgColor.slice(3, 5), 16) / 255;
+  const b = parseInt(bgColor.slice(5, 7), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.6 ? "#1e1b4b" : "#ffffff";
+}
+
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ q?: string }>;
@@ -47,6 +56,12 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       title,
       description,
       url: absoluteUrl(path),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [absoluteUrl("/icon-512.png")],
     },
   };
 }
@@ -119,10 +134,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
             <div className="flex items-center gap-4">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
                 style={{ backgroundColor: category.color }}
               >
-                <Icon className="h-7 w-7" />
+                <Icon className="h-7 w-7" style={{ color: textColorFor(category.color) }} />
               </div>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">

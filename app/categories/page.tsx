@@ -20,6 +20,13 @@ export const metadata: Metadata = {
       "Browse verified deals by category: AI, cloud, design, productivity, and more.",
     url: absoluteUrl("/categories"),
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Deal Categories — Browse by Topic",
+    description:
+      "Browse verified deals by category: AI, cloud, design, productivity, and more.",
+    images: [absoluteUrl("/icon-512.png")],
+  },
 };
 
 export default async function CategoriesPage() {

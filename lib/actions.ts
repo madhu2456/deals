@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
+import { isRateLimited } from "@/lib/rate-limit";
 import type { CreateDealInput } from "@/lib/data";
 
 const DISCOUNT_TYPES = new Set([
@@ -27,10 +29,10 @@ function isValidHttpUrl(value: string) {
   }
 }
 
-/** Clip at a word boundary — avoids mid-word truncation in shortDescription. */
+/** Clip at a word boundary — avoids mid-word truncation in shortDescription. Appends … when truncated. */
 function truncateAtWord(text: string, max = 120): string {
   if (text.length <= max) return text;
-  return text.slice(0, max).replace(/\s+\S*$/, "");
+  return text.slice(0, max).replace(/\s+\S*$/, "") + "\u2026";
 }
 
 /** Returns null for empty (clear field), Date when valid, or false when invalid. */
@@ -124,6 +126,7 @@ export async function submitDealAction(formData: FormData) {
   revalidatePath("/deals");
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/sitemap.xml");
 
   return { success: true as const };
 }
@@ -134,6 +137,20 @@ export async function loginAdminAction(formData: FormData) {
 
   if (!username || !password) {
     return { success: false as const, error: "Username and password are required" };
+  }
+
+  // Rate limit: max 5 attempts per 15 minutes per IP
+  const headersList = await headers();
+  const ip =
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headersList.get("x-real-ip") ||
+    "unknown";
+
+  if (isRateLimited(`login:${ip}`, 5, 15 * 60 * 1000)) {
+    return {
+      success: false as const,
+      error: "Too many login attempts. Please try again in 15 minutes.",
+    };
   }
 
   const result = await loginAdmin(username, password);
@@ -174,6 +191,7 @@ export async function adminCreateDealAction(formData: FormData) {
   revalidatePath("/deals");
   revalidatePath("/");
   revalidatePath("/categories");
+  revalidatePath("/sitemap.xml");
 
   redirect("/admin");
 }
@@ -220,6 +238,7 @@ export async function adminUpdateDealAction(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/categories");
   revalidatePath(`/deals/${deal.slug}`);
+  revalidatePath("/sitemap.xml");
 
   redirect("/admin");
 }
@@ -244,6 +263,7 @@ export async function adminApproveDealAction(id: string) {
   revalidatePath("/");
   revalidatePath("/categories");
   if (existing.slug) revalidatePath(`/deals/${existing.slug}`);
+  revalidatePath("/sitemap.xml");
 
   return { success: true as const };
 }
@@ -263,6 +283,7 @@ export async function adminRejectDealAction(id: string) {
   revalidatePath("/deals");
   revalidatePath("/");
   if (existing.slug) revalidatePath(`/deals/${existing.slug}`);
+  revalidatePath("/sitemap.xml");
 
   return { success: true as const };
 }
@@ -283,6 +304,7 @@ export async function adminDeleteDealAction(id: string) {
   revalidatePath("/");
   revalidatePath("/categories");
   if (existing.slug) revalidatePath(`/deals/${existing.slug}`);
+  revalidatePath("/sitemap.xml");
 
   return { success: true as const };
 }
