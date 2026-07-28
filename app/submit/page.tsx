@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     url: absoluteUrl("/submit"),
   },
   robots: {
-    index: true,
+    index: false,
     follow: true,
   },
 };

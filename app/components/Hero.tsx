@@ -77,6 +77,7 @@ export function Hero({ dealCount }: HeroProps) {
             <Link
               key={term}
               href={`/deals?q=${encodeURIComponent(term)}`}
+              rel="nofollow"
               className="rounded-full bg-card px-3 py-1.5 text-foreground/80 shadow-sm ring-1 ring-border transition-colors duration-200 hover:bg-primary/10 hover:text-primary hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {term}

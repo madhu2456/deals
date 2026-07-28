@@ -17,6 +17,8 @@ interface ClaimDealButtonProps {
   variant?: "default" | "secondary" | "outline";
 }
 
+const AFFILIATE_REL = "sponsored nofollow noopener";
+
 export function ClaimDealButton({
   dealId,
   dealUrl,
@@ -37,33 +39,32 @@ export function ClaimDealButton({
       dealTitle,
       couponCode,
     });
-
-    // Open immediately to avoid popup blockers
-    const tab = window.open(dealUrl, "_blank", "noopener,noreferrer");
-    if (!tab) {
-      window.location.assign(dealUrl);
-      return;
-    }
     void fetch(`/api/deals/${dealId}/click`, { method: "POST" }).catch(() => {});
   };
 
   return (
     <Button
-      type="button"
+      asChild
       size={size}
       variant={variant}
       className={cn("min-h-11 gap-2", className)}
       data-analytics="get_deal"
       data-deal-id={dealId}
       onClick={handleClick}
-      aria-label={
-        brandName
-          ? `Get deal on ${brandName} (opens in a new tab)`
-          : "Get deal (opens in a new tab)"
-      }
     >
-      Get Deal
-      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+      <a
+        href={dealUrl}
+        target="_blank"
+        rel={AFFILIATE_REL}
+        aria-label={
+          brandName
+            ? `Get deal on ${brandName} (opens in a new tab)`
+            : "Get deal (opens in a new tab)"
+        }
+      >
+        Get Deal
+        <ExternalLink className="h-4 w-4" aria-hidden="true" />
+      </a>
     </Button>
   );
 }

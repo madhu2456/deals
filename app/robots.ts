@@ -4,6 +4,7 @@ import { getSiteUrl } from "@/lib/site";
 /**
  * Crawl policy for Google, Bing, and major AI answer engines (AEO / GEO).
  * Admin + API are blocked; public content is open to search & citation bots.
+ * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot) are blocked.
  */
 export default function robots(): MetadataRoute.Robots {
   const site = getSiteUrl();
@@ -15,15 +16,15 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
-      // Explicit for Google Search / Googlebot (sitemap + public pages)
+      // Google Search
       {
         userAgent: "Googlebot",
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
-      // Explicit allow for major AI / answer-engine crawlers
+      // AI citation / search crawlers (NOT training)
       {
-        userAgent: "GPTBot",
+        userAgent: "OAI-SearchBot",
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
@@ -33,22 +34,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
       {
-        userAgent: "OAI-SearchBot",
-        allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
-      },
-      {
         userAgent: "PerplexityBot",
-        allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
-      },
-      {
-        userAgent: "ClaudeBot",
-        allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
-      },
-      {
-        userAgent: "anthropic-ai",
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
@@ -72,14 +58,25 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },
-      // Optional: block pure training scrapers while allowing search/cite bots
+      // Training-only crawlers — blocked
+      {
+        userAgent: "GPTBot",
+        disallow: ["/"],
+      },
+      {
+        userAgent: "ClaudeBot",
+        disallow: ["/"],
+      },
+      {
+        userAgent: "anthropic-ai",
+        disallow: ["/"],
+      },
       {
         userAgent: "CCBot",
         disallow: ["/"],
       },
     ],
     sitemap: `${site}/sitemap.xml`,
-    // Hostname only (no scheme) — Yandex Host directive; Google ignores this line
     host: site.replace(/^https?:\/\//, ""),
   };
 }

@@ -45,9 +45,11 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
     };
   }
 
+  const rawDesc = deal.shortDescription || deal.description;
   const description =
-    deal.shortDescription ||
-    deal.description.slice(0, 155) + (deal.description.length > 155 ? "…" : "");
+    rawDesc.length <= 155
+      ? rawDesc
+      : rawDesc.slice(0, 155).replace(/\s+\S*$/, "") + "…";
   const title = `${deal.title} | ${deal.brandName} Deal`;
   const path = `/deals/${deal.slug}`;
 
@@ -184,6 +186,9 @@ export default async function DealPage({ params }: DealPageProps) {
                   </h1>
                   <p className="mt-1 break-words text-muted-foreground [overflow-wrap:anywhere]">
                     {deal.brandName}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground/70">
+                    Some links are affiliate or referral links. Prices and availability are set by the merchant and can change.
                   </p>
                 </div>
               </div>
@@ -347,7 +352,7 @@ export default async function DealPage({ params }: DealPageProps) {
                         <a
                           href={deal.brandUrl}
                           target="_blank"
-                          rel="noopener noreferrer"
+                          rel="sponsored nofollow noopener"
                           className="truncate underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                         >
                           Official website
@@ -409,7 +414,7 @@ export default async function DealPage({ params }: DealPageProps) {
                         <a
                           href={deal.brandUrl}
                           target="_blank"
-                          rel="noopener noreferrer"
+                          rel="sponsored nofollow noopener"
                           className="truncate underline-offset-2 hover:underline"
                         >
                           Official website

@@ -48,6 +48,8 @@ export default async function HomePage() {
     0
   );
 
+  const activeCategories = categories.filter((c) => c._count.deals > 0);
+
   const listItems = latestDeals.map((d) => ({
     name: d.title,
     path: `/deals/${d.slug}`,
@@ -102,7 +104,7 @@ export default async function HomePage() {
               category, and claim offers with confidence.
             </p>
             <ul className="mt-4 list-inside list-disc space-y-1.5 text-sm text-muted-foreground">
-              <li>Browse {totalDeals}+ verified offers across {categories.length} categories</li>
+              <li>Browse {totalDeals}+ verified offers across {activeCategories.length} categories</li>
               <li>Copy coupon codes and open merchant links in one click</li>
               <li>Submit deals you find — we moderate before publishing</li>
             </ul>
@@ -133,7 +135,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {categories.slice(0, 8).map((category) => (
+            {activeCategories.slice(0, 8).map((category) => (
               <CategoryCard
                 key={category.id}
                 name={category.name}

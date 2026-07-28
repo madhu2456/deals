@@ -47,6 +47,8 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
     getCategories(),
   ]);
 
+  const activeCategories = categories.filter((c) => c._count.deals > 0);
+
   const activeCategory = categories.find((c) => c.slug === categorySlug);
   const hasFilters = Boolean(search || categorySlug || featuredOnly);
 
@@ -175,7 +177,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
                 </Badge>
               </Link>
 
-              {categories.map((category) => {
+              {activeCategories.map((category) => {
                 const href = featuredOnly
                   ? `/deals?category=${category.slug}&featured=1`
                   : `/deals?category=${category.slug}`;

@@ -50,6 +50,25 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
+
+            <h2 className="mt-6 text-sm font-semibold text-foreground">Legal</h2>
+            <ul className="mt-3 space-y-2.5 text-sm">
+              <li>
+                <Link href="/privacy" className={linkClass}>
+                  Privacy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className={linkClass}>
+                  Terms
+                </Link>
+              </li>
+              <li>
+                <Link href="/affiliate-disclosure" className={linkClass}>
+                  Affiliate Disclosure
+                </Link>
+              </li>
+            </ul>
           </div>
 
           <div>

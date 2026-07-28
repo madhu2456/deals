@@ -93,6 +93,14 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
 
   return (
     <form action={handleSubmit} className="space-y-6" noValidate>
+      {/* Honeypot — hidden from humans, bots fill it */}
+      <div className="absolute -left-[9999px] opacity-0" aria-hidden="true">
+        <label htmlFor="website">Website</label>
+        <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
+      </div>
+
+      {/* Timestamp for bot detection — created on first render */}
+      <input type="hidden" name="timestamp" value={String(Date.now())} />
       {errorKeys.length > 0 && (
         <div
           role="alert"

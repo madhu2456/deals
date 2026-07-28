@@ -27,6 +27,12 @@ function isValidHttpUrl(value: string) {
   }
 }
 
+/** Clip at a word boundary — avoids mid-word truncation in shortDescription. */
+function truncateAtWord(text: string, max = 120): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max).replace(/\s+\S*$/, "");
+}
+
 /** Returns null for empty (clear field), Date when valid, or false when invalid. */
 function parseOptionalDate(raw: string): Date | null | false {
   const trimmed = raw.trim();
@@ -38,6 +44,15 @@ function parseOptionalDate(raw: string): Date | null | false {
 
 export async function submitDealAction(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
+
+  // Bot protection — honeypot filled or form submitted too fast
+  if (String(raw.website || "").trim()) {
+    return { success: false as const, errors: {} };
+  }
+  const timestamp = Number(String(raw.timestamp || "0"));
+  if (!timestamp || Date.now() - timestamp < 3000) {
+    return { success: false as const, errors: {} };
+  }
 
   const title = String(raw.title || "").trim();
   const brandName = String(raw.brandName || "").trim();
@@ -90,7 +105,7 @@ export async function submitDealAction(formData: FormData) {
         dealUrl,
         categoryId,
         description,
-        shortDescription: description.slice(0, 120),
+        shortDescription: truncateAtWord(description),
         discountType,
         discountValue: String(raw.discountValue || "").trim() || null,
         couponCode: String(raw.couponCode || "").trim() || null,
@@ -325,7 +340,7 @@ async function parseDealFormData(
     title,
     slug: "",
     description,
-    shortDescription: description.slice(0, 120),
+    shortDescription: truncateAtWord(description),
     categoryId,
     brandName,
     brandUrl: brandUrl || undefined,

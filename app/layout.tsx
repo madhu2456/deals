@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_IN",
     url: absoluteUrl("/"),
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
@@ -94,6 +94,7 @@ export const metadata: Metadata = {
   // Hint for crawlers / some AI tools that an LLM context file exists
   other: {
     "llms-txt": absoluteUrl("/llms.txt"),
+    "ai-profile": absoluteUrl("/ai-profile.json"),
   },
   verification: process.env.GOOGLE_SITE_VERIFICATION
     ? { google: process.env.GOOGLE_SITE_VERIFICATION }
@@ -116,7 +117,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-IN"
       className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-dvh flex-col font-sans">

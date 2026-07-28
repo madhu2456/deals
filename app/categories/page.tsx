@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 
 export default async function CategoriesPage() {
   const categories = await getCategories();
+  const activeCategories = categories.filter((c) => c._count.deals > 0);
 
   return (
     <>
@@ -36,18 +37,20 @@ export default async function CategoriesPage() {
           type: "CollectionPage",
         })}
       />
-      <JsonLd
-        data={itemListSchema({
-          name: "Deal categories",
-          description: "Topic hubs for curated discounts and coupon codes.",
-          path: "/categories",
-          items: categories.map((c) => ({
-            name: c.name,
-            path: `/categories/${c.slug}`,
-            description: c.description,
-          })),
-        })}
-      />
+      {activeCategories.length > 0 && (
+        <JsonLd
+          data={itemListSchema({
+            name: "Deal categories",
+            description: "Topic hubs for curated discounts and coupon codes.",
+            path: "/categories",
+            items: activeCategories.map((c) => ({
+              name: c.name,
+              path: `/categories/${c.slug}`,
+              description: c.description,
+            })),
+          })}
+        />
+      )}
 
       <Header />
       <main id="main-content" className="flex-1">
@@ -63,9 +66,9 @@ export default async function CategoriesPage() {
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          {categories.length > 0 ? (
+          {activeCategories.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {categories.map((category) => (
+              {activeCategories.map((category) => (
                 <CategoryCard
                   key={category.id}
                   name={category.name}

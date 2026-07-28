@@ -64,6 +64,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
   if (!category) notFound();
 
+  const activeCategories = allCategories.filter((c) => c._count.deals > 0);
+
   const Icon = getIcon(category.icon);
   const path = `/categories/${category.slug}`;
 
@@ -166,7 +168,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <span className="mr-2 text-sm font-medium text-muted-foreground">Category:</span>
-            {allCategories.map((cat) => (
+            {activeCategories.map((cat) => (
               <Link key={cat.slug} href={`/categories/${cat.slug}`}>
                 <Badge
                   variant={cat.slug === slug ? "default" : "outline"}
