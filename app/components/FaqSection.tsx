@@ -1,4 +1,5 @@
 import { HOME_FAQS } from "@/lib/seo/json-ld";
+import { SITE_NAME } from "@/lib/site";
 
 export function FaqSection({
   faqs = HOME_FAQS,
@@ -22,7 +23,7 @@ export function FaqSection({
         {heading}
       </h2>
       <p className="mt-2 text-muted-foreground">
-        Straight answers about how Deals works — written so you (and search engines) can extract them easily.
+        Straight answers about how {SITE_NAME} works — written so you (and search engines) can extract them easily.
       </p>
 
       <dl className="mt-8 space-y-4">

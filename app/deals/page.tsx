@@ -11,7 +11,7 @@ import { EmptyState } from "../components/EmptyState";
 import { getApprovedDeals, getCategories } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +25,14 @@ export const metadata: Metadata = {
     description:
       "Search and filter verified deals, coupon codes, and exclusive discounts.",
     url: absoluteUrl("/deals"),
+    images: defaultOgImages(),
   },
   twitter: {
     card: "summary_large_image",
     title: "Browse Verified Deals & Coupon Codes",
     description:
       "Search and filter verified deals, coupon codes, and exclusive discounts.",
-    images: [absoluteUrl("/icon-512.png")],
+    images: [defaultOgImage()],
   },
 };
 

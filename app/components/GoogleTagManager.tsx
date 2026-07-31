@@ -31,9 +31,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 /**
  * GTM noscript fallback — must be immediately after opening <body>.
+ * Only rendered when consent is accepted (privacy-first).
  */
 export function GoogleTagManagerNoscript() {
+  const { consent } = useCookieConsent();
+
   if (!GTM_ID) return null;
+  if (consent !== "accepted") return null;
 
   return (
     <noscript>

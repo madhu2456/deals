@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { getIcon } from "@/lib/icons";
+import { ArrowUpRight, Tag } from "lucide-react";
+import { iconMap } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 interface CategoryCardProps {
@@ -29,7 +29,7 @@ export function CategoryCard({
   color,
   dealCount,
 }: CategoryCardProps) {
-  const Icon = getIcon(icon);
+  const Icon = iconMap[icon] ?? Tag;
 
   return (
     <Link

@@ -4,20 +4,21 @@ import { Footer } from "../components/Footer";
 import { SubmitDealForm } from "./SubmitDealForm";
 import { getCategories } from "@/lib/data";
 import { JsonLd, webPageSchema } from "@/lib/seo/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
+const submitDescription = `Share a verified discount, promo code, or exclusive offer. Submissions are reviewed before they appear on ${SITE_NAME}.`;
+
 export const metadata: Metadata = {
   title: "Submit a Deal or Coupon Code",
-  description:
-    "Share a verified discount, promo code, or exclusive offer. Submissions are reviewed before they appear on Deals.",
+  description: submitDescription,
   alternates: { canonical: "/submit" },
   openGraph: {
     title: "Submit a Deal or Coupon Code",
-    description:
-      "Share a discount you found. We review every submission before publishing.",
+    description: submitDescription,
     url: absoluteUrl("/submit"),
+    images: defaultOgImages(),
   },
   robots: {
     index: false,

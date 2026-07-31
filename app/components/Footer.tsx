@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
+import { SITE_NAME, SITE_NAME_SHORT } from "@/lib/site";
 
 const linkClass =
   "text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded";
@@ -19,11 +20,11 @@ export function Footer() {
             <Link
               href="/"
               className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Deals home"
+              aria-label={`${SITE_NAME} home`}
             >
               <BrandLogo size="sm" />
               <span className="text-lg font-bold tracking-tight text-foreground">
-                Deals
+                {SITE_NAME_SHORT}
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
@@ -140,7 +141,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-          © {currentYear} Deals. All rights reserved.
+          © {currentYear} {SITE_NAME}. All rights reserved.
         </div>
       </div>
     </footer>

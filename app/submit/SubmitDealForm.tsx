@@ -29,6 +29,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [timestamp] = useState(() => Date.now());
   const firstErrorRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
       </div>
 
       {/* Timestamp for bot detection — created on first render */}
-      <input type="hidden" name="timestamp" value={String(Date.now())} />
+      <input type="hidden" name="timestamp" value={String(timestamp)} />
       {errorKeys.length > 0 && (
         <div
           role="alert"

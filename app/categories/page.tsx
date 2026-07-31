@@ -5,7 +5,7 @@ import { CategoryCard } from "../components/CategoryCard";
 import { EmptyState } from "../components/EmptyState";
 import { getCategories } from "@/lib/data";
 import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +19,14 @@ export const metadata: Metadata = {
     description:
       "Browse verified deals by category: AI, cloud, design, productivity, and more.",
     url: absoluteUrl("/categories"),
+    images: defaultOgImages(),
   },
   twitter: {
     card: "summary_large_image",
     title: "Deal Categories — Browse by Topic",
     description:
       "Browse verified deals by category: AI, cloud, design, productivity, and more.",
-    images: [absoluteUrl("/icon-512.png")],
+    images: [defaultOgImage()],
   },
 };
 

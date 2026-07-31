@@ -2,14 +2,14 @@ import Link from "next/link";
 import { Search, TrendingUp, ShieldCheck, Sparkles, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SITE_NAME } from "@/lib/site";
 
 interface HeroProps {
   dealCount: number;
+  popularBrands: string[];
 }
 
-export function Hero({ dealCount }: HeroProps) {
-  const popularSearches = ["Notion", "Figma", "Spotify", "ChatGPT", "Vercel"];
-
+export function Hero({ dealCount, popularBrands }: HeroProps) {
   return (
     <section
       className="relative overflow-hidden border-b border-border bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
@@ -37,7 +37,9 @@ export function Hero({ dealCount }: HeroProps) {
         </h1>
 
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          Find curated discounts on software, SaaS tools, and products you already use. Reviewed offers only — no spam.
+          <strong className="font-semibold text-foreground">{SITE_NAME}</strong>
+          {" "}
+          is a free, curated directory of verified discounts on software, SaaS tools, and products you already use. Reviewed offers only — no spam.
         </p>
 
         <form
@@ -68,22 +70,24 @@ export function Hero({ dealCount }: HeroProps) {
           </Button>
         </form>
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 font-medium">
-            <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-            Popular:
-          </span>
-          {popularSearches.map((term) => (
-            <Link
-              key={term}
-              href={`/deals?q=${encodeURIComponent(term)}`}
-              rel="nofollow"
-              className="rounded-full bg-card px-3 py-1.5 text-foreground/80 shadow-sm ring-1 ring-border transition-colors duration-200 hover:bg-primary/10 hover:text-primary hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {term}
-            </Link>
-          ))}
-        </div>
+        {popularBrands.length >= 3 && (
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+              Popular:
+            </span>
+            {popularBrands.map((term) => (
+              <Link
+                key={term}
+                href={`/deals?q=${encodeURIComponent(term)}`}
+                rel="nofollow"
+                className="rounded-full bg-card px-3 py-1.5 text-foreground/80 shadow-sm ring-1 ring-border transition-colors duration-200 hover:bg-primary/10 hover:text-primary hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {term}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-muted-foreground">
           <li className="inline-flex items-center gap-1.5">

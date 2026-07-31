@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Affiliate Disclosure",
-  description:
-    "Transparency about how affiliate and referral links work on the Deals directory.",
+  description: `Transparency about how affiliate and referral links work on ${SITE_NAME}.`,
   alternates: { canonical: "/affiliate-disclosure" },
   robots: { index: true, follow: true },
 };
@@ -46,7 +46,7 @@ export default function AffiliateDisclosurePage() {
             <h2>Our commitment</h2>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                We only list deals we believe offer genuine value. A deal's inclusion
+                We only list deals we believe offer genuine value. A deal&rsquo;s inclusion
                 is never determined by commission rates.
               </li>
               <li>
@@ -56,7 +56,7 @@ export default function AffiliateDisclosurePage() {
               <li>
                 Outbound merchant links are marked with{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-sm">
-                  rel="sponsored nofollow"
+                  rel=&ldquo;sponsored nofollow&rdquo;
                 </code>{" "}
                 so search engines understand the relationship.
               </li>
@@ -72,7 +72,7 @@ export default function AffiliateDisclosurePage() {
             <h2>Your choice</h2>
             <p>
               Using affiliate links is optional. You can always navigate directly to
-              a merchant's website without using our links if you prefer. The coupon
+              a merchant&rsquo;s website without using our links if you prefer. The coupon
               codes and discount details we list are usable regardless of how you
               reach the merchant.
             </p>

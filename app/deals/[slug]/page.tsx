@@ -25,7 +25,11 @@ import {
   offerSchema,
   webPageSchema,
 } from "@/lib/seo/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import {
+  absoluteUrl,
+  defaultOgImages,
+  SITE_NAME_SHORT,
+} from "@/lib/site";
 import { CopyCodeButton } from "./CopyCodeButton";
 import { ClaimDealButton } from "./ClaimDealButton";
 
@@ -45,7 +49,7 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
     };
   }
 
-  const rawDesc = deal.shortDescription || deal.description;
+  const rawDesc = deal.shortDescription || deal.description || "";
   const description =
     rawDesc.length <= 155
       ? rawDesc
@@ -61,15 +65,18 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
       title,
       description,
       url: absoluteUrl(path),
-      type: "product",
+      type: "website",
       images: deal.logoUrl
         ? [{ url: deal.logoUrl, alt: deal.brandName }]
-        : [{ url: absoluteUrl("/icon-512.png"), alt: "Deals" }],
-    } as Metadata["openGraph"],
+        : defaultOgImages(),
+    },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: deal.logoUrl
+        ? [{ url: deal.logoUrl, alt: deal.brandName }]
+        : defaultOgImages(),
     },
     robots: { index: true, follow: true },
   };
@@ -105,7 +112,7 @@ export default async function DealPage({ params }: DealPageProps) {
       <JsonLd
         data={breadcrumbSchema([
           { name: "Home", path: "/" },
-          { name: "Deals", path: "/deals" },
+          { name: SITE_NAME_SHORT, path: "/deals" },
           { name: deal.category.name, path: `/categories/${deal.category.slug}` },
           { name: deal.brandName, path },
         ])}
@@ -188,7 +195,7 @@ export default async function DealPage({ params }: DealPageProps) {
                     {deal.brandName}
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground/70">
-                    Some links are affiliate or referral links. Prices and availability are set by the merchant and can change.
+                    Some links are affiliate or referral links — we may earn a commission. Prices and availability are set by the merchant.
                   </p>
                 </div>
               </div>
@@ -439,7 +446,7 @@ export default async function DealPage({ params }: DealPageProps) {
       </main>
 
       {/* Sticky mobile claim bar — marketplace best practice */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur-md lg:hidden">
+      <div className="deal-mobile-claim-bar fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-4xl items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-primary">{discount}</p>
@@ -466,6 +473,7 @@ export default async function DealPage({ params }: DealPageProps) {
             size="default"
             variant="default"
             className="shrink-0"
+            showAffiliateNote={false}
           />
         </div>
       </div>

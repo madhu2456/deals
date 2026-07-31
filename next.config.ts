@@ -92,6 +92,24 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/.well-known/security.txt",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/humans.txt",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
       // Public marketing/listing pages — edge cache for 15 min, serve stale for 24h
       {
         source: "/",
@@ -123,6 +141,15 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
         ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/security.txt",
+        destination: "/.well-known/security.txt",
+        permanent: false,
       },
     ];
   },

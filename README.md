@@ -1,4 +1,4 @@
-# Deals
+# Deals by Madhu Dadi
 
 **Verified deals, coupons, and discounts for everyone.**
 

@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
+import { SITE_NAME } from "@/lib/site";
 
 export const runtime = "nodejs";
-export const alt = "Deals — Verified Deals, Coupons & Discounts";
+export const alt = `${SITE_NAME} — Verified Deals, Coupons & Discounts`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -57,7 +58,7 @@ export default function OpenGraphImage() {
         {/* Title */}
         <div
           style={{
-            fontSize: 72,
+            fontSize: 56,
             fontWeight: 800,
             color: "#ffffff",
             letterSpacing: "-0.02em",
@@ -67,7 +68,7 @@ export default function OpenGraphImage() {
             marginBottom: 16,
           }}
         >
-          Deals
+          {SITE_NAME}
         </div>
 
         {/* Subtitle */}

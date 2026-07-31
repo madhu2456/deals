@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description:
-    "How Deals collects, uses, and protects your information when you browse or submit a deal.",
+  title: `Privacy Policy | ${SITE_NAME}`,
+  description: `How ${SITE_NAME} collects, uses, and protects your information when you browse or submit a deal.`,
   alternates: { canonical: "/privacy" },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: `Privacy Policy | ${SITE_NAME}`,
+    description: `How ${SITE_NAME} collects, uses, and protects your information when you browse or submit a deal.`,
+    url: absoluteUrl("/privacy"),
+    type: "website",
+    images: defaultOgImages(),
+  },
 };
 
 export default function PrivacyPage() {

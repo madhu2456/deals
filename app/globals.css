@@ -233,3 +233,9 @@ html.dark {
     scroll-behavior: auto !important;
   }
 }
+
+/* When cookie banner is open, lift mobile deal claim bar above measured banner height */
+html[data-cookie-banner="open"] .deal-mobile-claim-bar {
+  bottom: var(--cookie-banner-height, 0px);
+  z-index: 210;
+}

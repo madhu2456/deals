@@ -9,7 +9,12 @@ import { CategoryCard } from "./components/CategoryCard";
 import { DealGrid } from "./components/DealGrid";
 import { EmptyState } from "./components/EmptyState";
 import { FaqSection } from "./components/FaqSection";
-import { getCategories, getFeaturedDeals, getLatestDeals } from "@/lib/data";
+import {
+  getCategories,
+  getFeaturedDeals,
+  getLatestDeals,
+  getPopularBrandNames,
+} from "@/lib/data";
 import {
   faqSchema,
   HOME_FAQS,
@@ -17,7 +22,12 @@ import {
   JsonLd,
   webPageSchema,
 } from "@/lib/seo/json-ld";
-import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+import {
+  absoluteUrl,
+  defaultOgImages,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+} from "@/lib/site";
 
 // Runtime data from SQLite — do not prerender at Docker build time
 export const dynamic = "force-dynamic";
@@ -33,15 +43,18 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: absoluteUrl("/"),
     type: "website",
+    images: defaultOgImages(),
   },
 };
 
 export default async function HomePage() {
-  const [categories, featuredDeals, latestDeals] = await Promise.all([
-    getCategories(),
-    getFeaturedDeals(4),
-    getLatestDeals(8),
-  ]);
+  const [categories, featuredDeals, latestDeals, popularBrands] =
+    await Promise.all([
+      getCategories(),
+      getFeaturedDeals(4),
+      getLatestDeals(8),
+      getPopularBrandNames(5),
+    ]);
 
   const totalDeals = categories.reduce(
     (sum, category) => sum + category._count.deals,
@@ -81,7 +94,7 @@ export default async function HomePage() {
       <Header />
 
       <main id="main-content" className="flex-1">
-        <Hero dealCount={totalDeals} />
+        <Hero dealCount={totalDeals} popularBrands={popularBrands} />
 
         {/* AEO answer-first intro — extractable definition block */}
         <section
@@ -93,10 +106,10 @@ export default async function HomePage() {
               id="what-is-deals"
               className="text-balance text-xl font-bold tracking-tight text-foreground sm:text-2xl"
             >
-              What is Deals?
+              What is {SITE_NAME}?
             </h2>
             <p className="mt-3 text-pretty text-base leading-relaxed text-muted-foreground">
-              <strong className="font-semibold text-foreground">Deals</strong> is
+              <strong className="font-semibold text-foreground">{SITE_NAME}</strong> is
               a free, curated directory of verified discounts, coupon codes, and
               exclusive offers on software, SaaS tools, cloud services, design
               apps, courses, and everyday products. Every public listing is

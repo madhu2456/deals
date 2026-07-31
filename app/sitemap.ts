@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { MIN_CATEGORY_DEALS_FOR_INDEX } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/site";
 
@@ -33,34 +34,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
-    {
-      url: `${site}/submit`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
+    // /submit is noindex,follow (utility form) — omit from sitemap
   ];
 
   try {
+    const approvedNotExpired = {
+      status: "APPROVED" as const,
+      OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
+    };
+
     const [categories, deals] = await Promise.all([
       prisma.category.findMany({
         where: {
           isActive: true,
           deals: {
-            some: {
-              status: "APPROVED",
-              OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
+            some: approvedNotExpired,
+          },
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              deals: {
+                where: approvedNotExpired,
+              },
             },
           },
         },
-        select: { slug: true, updatedAt: true },
         orderBy: { sortOrder: "asc" },
       }),
       prisma.deal.findMany({
-        where: {
-          status: "APPROVED",
-          OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
-        },
+        where: approvedNotExpired,
         select: { slug: true, updatedAt: true, approvedAt: true },
         orderBy: { updatedAt: "desc" },
         // Cap for sitemap size safety
@@ -68,12 +73,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     ]);
 
-    const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
-      url: `${site}/categories/${c.slug}`,
-      lastModified: c.updatedAt ?? now,
-      changeFrequency: "daily" as const,
-      priority: 0.85,
-    }));
+    // Thin categories omitted until they have enough deals
+    const categoryRoutes: MetadataRoute.Sitemap = categories
+      .filter((c) => c._count.deals >= MIN_CATEGORY_DEALS_FOR_INDEX)
+      .map((c) => ({
+        url: `${site}/categories/${c.slug}`,
+        lastModified: c.updatedAt ?? now,
+        changeFrequency: "daily" as const,
+        priority: 0.85,
+      }));
 
     const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
       url: `${site}/deals/${d.slug}`,

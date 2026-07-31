@@ -35,11 +35,29 @@ const publicDealSelect = {
 
 export type PublicDeal = Awaited<ReturnType<typeof getApprovedDeals>>[number];
 
+/** Categories below this deal count are noindex and omitted from sitemap (thin hub protection). */
+export const MIN_CATEGORY_DEALS_FOR_INDEX = 3;
+
 /** Deals that are still valid for public display (not past expiry). */
 function notExpiredFilter(): Prisma.DealWhereInput {
   return {
     OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
   };
+}
+
+/** Total approved, non-expired deals in a category (unfiltered by search). */
+export async function countApprovedDealsInCategory(
+  categorySlug: string
+): Promise<number> {
+  return prisma.deal.count({
+    where: {
+      AND: [
+        { status: "APPROVED" },
+        { category: { slug: categorySlug } },
+        notExpiredFilter(),
+      ],
+    },
+  });
 }
 
 export async function getCategories() {
@@ -136,6 +154,34 @@ export async function getLatestDeals(take = 6) {
     take,
     select: publicDealSelect,
   });
+}
+
+/** Distinct brand names from approved, non-expired deals (for hero chips). */
+export async function getPopularBrandNames(take = 5): Promise<string[]> {
+  const deals = await prisma.deal.findMany({
+    where: {
+      AND: [{ status: "APPROVED" }, notExpiredFilter()],
+    },
+    select: { brandName: true, isFeatured: true, clicks: true, approvedAt: true },
+    orderBy: [
+      { isFeatured: "desc" },
+      { clicks: "desc" },
+      { approvedAt: "desc" },
+    ],
+  });
+
+  const seen = new Set<string>();
+  const brands: string[] = [];
+  for (const d of deals) {
+    const name = (d.brandName || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    brands.push(name);
+    if (brands.length >= take) break;
+  }
+  return brands;
 }
 
 export async function getDealBySlug(slug: string) {

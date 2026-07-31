@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Terms of Service",
-  description:
-    "Terms governing your use of the Deals website, deal submissions, and directory listings.",
+  title: `Terms of Service | ${SITE_NAME}`,
+  description: `Terms governing your use of ${SITE_NAME}, deal submissions, and directory listings.`,
   alternates: { canonical: "/terms" },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: `Terms of Service | ${SITE_NAME}`,
+    description: `Terms governing your use of ${SITE_NAME}, deal submissions, and directory listings.`,
+    url: absoluteUrl("/terms"),
+    type: "website",
+    images: defaultOgImages(),
+  },
 };
 
 export default function TermsPage() {
@@ -72,7 +79,7 @@ export default function TermsPage() {
 
             <h2>6. Limitation of liability</h2>
             <p>
-              This site is provided "as is" without warranties of any kind. We are not
+              This site is provided &ldquo;as is&rdquo; without warranties of any kind. We are not
               liable for any damages arising from your use of the site, deal listings,
               or third-party merchant links.
             </p>

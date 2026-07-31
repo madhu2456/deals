@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const iconMap: Record<string, LucideIcon> = {
+export const iconMap: Record<string, LucideIcon> = {
   sparkles: Sparkles,
   cloud: Cloud,
   palette: Palette,

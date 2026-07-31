@@ -5,6 +5,7 @@ import {
   SAME_AS,
   SITE_DESCRIPTION,
   SITE_NAME,
+  SITE_NAME_SHORT,
   SITE_TAGLINE,
 } from "@/lib/site";
 
@@ -52,7 +53,7 @@ export function websiteSchema() {
     "@type": "WebSite",
     "@id": `${getSiteUrl()}/#website`,
     name: SITE_NAME,
-    alternateName: ["Deals Directory", SITE_TAGLINE],
+    alternateName: [SITE_NAME_SHORT, "Deals Directory", SITE_TAGLINE],
     url: getSiteUrl(),
     description: SITE_DESCRIPTION,
     publisher: { "@id": `${getSiteUrl()}/#organization` },
@@ -309,9 +310,9 @@ export function faqSchema(
 /** Homepage FAQs optimized for AEO / GEO citation */
 export const HOME_FAQS = [
   {
-    question: "What is Deals?",
+    question: `What is ${SITE_NAME}?`,
     answer:
-      "Deals is a curated directory of verified discounts, coupon codes, and exclusive offers on software, SaaS tools, cloud services, design apps, learning platforms, and everyday products. Every public listing is reviewed before it appears.",
+      `${SITE_NAME} (also called ${SITE_NAME_SHORT}) is a curated directory of verified discounts, coupon codes, and exclusive offers on software, SaaS tools, cloud services, design apps, learning platforms, and everyday products. Founded by Madhu Dadi, every public listing is reviewed before it appears.`,
   },
   {
     question: "Are the coupon codes and deals verified?",
@@ -329,8 +330,8 @@ export const HOME_FAQS = [
       "Yes. Use the Submit a Deal form to share a discount you discovered. Include the brand, URL, category, and a short description. We review submissions before publishing them for everyone.",
   },
   {
-    question: "Is Deals free to use?",
+    question: `Is ${SITE_NAME_SHORT} free to use?`,
     answer:
-      "Browsing, searching, and claiming listed deals is free. There is no membership fee to view coupons or open offer links. Always confirm final pricing and eligibility on the merchant’s site.",
+      `Yes. Browsing, searching, and claiming listed deals on ${SITE_NAME} is free. There is no membership fee to view coupons or open offer links. Always confirm final pricing and eligibility on the merchant’s site.`,
   },
 ];

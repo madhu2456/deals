@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { BrandLogo } from "./BrandLogo";
+import { SITE_NAME, SITE_NAME_SHORT } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -29,11 +30,11 @@ export function Header() {
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            aria-label="Deals home"
+            aria-label={`${SITE_NAME} home`}
           >
             <BrandLogo size="md" priority />
             <span className="hidden text-xl font-bold tracking-tight text-foreground sm:inline">
-              Deals
+              {SITE_NAME_SHORT}
             </span>
           </Link>
 
@@ -130,10 +131,11 @@ export function Header() {
                   href="/"
                   className="flex items-center gap-2"
                   onClick={() => setMobileOpen(false)}
+                  aria-label={`${SITE_NAME} home`}
                 >
                   <BrandLogo size="md" />
                   <span className="text-xl font-bold tracking-tight text-foreground">
-                    Deals
+                    {SITE_NAME_SHORT}
                   </span>
                 </Link>
 

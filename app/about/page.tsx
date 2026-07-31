@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
-import { absoluteUrl, PUBLISHER, SITE_NAME } from "@/lib/site";
+import { absoluteUrl, defaultOgImages, PUBLISHER, SITE_NAME } from "@/lib/site";
 
 const title = `About ${SITE_NAME}`;
 const description = `Learn about ${SITE_NAME} — a curated directory of verified deals, coupons, and discounts for software, SaaS tools, and more.`;
@@ -16,6 +16,7 @@ export const metadata: Metadata = {
     description,
     url: absoluteUrl("/about"),
     type: "website",
+    images: defaultOgImages(),
   },
 };
 

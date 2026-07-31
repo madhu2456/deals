@@ -6,7 +6,9 @@ import {
   GoogleTagManager,
   GoogleTagManagerNoscript,
 } from "./components/GoogleTagManager";
-import CookieConsentBanner from "./components/CookieConsent";
+import CookieConsentBanner, {
+  CookieConsentProvider,
+} from "./components/CookieConsent";
 // GA4 is configured in GTM (G-THQ1ZPJ4B7). Do not also load gtag.js here or pageviews double-count.
 import {
   JsonLd,
@@ -15,6 +17,8 @@ import {
 } from "@/lib/seo/json-ld";
 import {
   absoluteUrl,
+  defaultOgImage,
+  defaultOgImages,
   SITE_DESCRIPTION,
   SITE_KEYWORDS,
   SITE_NAME,
@@ -51,12 +55,13 @@ export const metadata: Metadata = {
   // A root canonical of "/" would make every page claim the homepage as canonical.
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
       { url: "/icon.png", type: "image/png", sizes: "192x192" },
       { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
-    shortcut: ["/icon.png"],
+    shortcut: ["/favicon.ico"],
   },
   manifest: "/site.webmanifest",
   openGraph: {
@@ -66,12 +71,13 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
+    images: defaultOgImages(),
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
-    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: SITE_NAME }],
+    images: [defaultOgImage()],
   },
   robots: {
     index: true,
@@ -114,18 +120,20 @@ export default function RootLayout({
       className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-dvh flex-col font-sans">
-        <GoogleTagManagerNoscript />
-        <CookieConsentBanner />
-        <GoogleTagManager />
-        <JsonLd data={organizationSchema()} />
-        <JsonLd data={websiteSchema()} />
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        <TooltipProvider delay={150}>
-          {children}
-          <Toaster position="bottom-right" richColors closeButton />
-        </TooltipProvider>
+        <CookieConsentProvider>
+          <GoogleTagManagerNoscript />
+          <CookieConsentBanner />
+          <GoogleTagManager />
+          <JsonLd data={organizationSchema()} />
+          <JsonLd data={websiteSchema()} />
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <TooltipProvider delay={150}>
+            {children}
+            <Toaster position="bottom-right" richColors closeButton />
+          </TooltipProvider>
+        </CookieConsentProvider>
       </body>
     </html>
   );

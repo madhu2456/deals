@@ -5,6 +5,7 @@ import { getSiteUrl } from "@/lib/site";
  * Crawl policy for Google, Bing, and major AI answer engines (AEO / GEO).
  * Admin + API are blocked; public content is open to search & citation bots.
  * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot) are blocked.
+ * Claude-SearchBot / Claude-User / Claude-Web are allowed (citation); ClaudeBot training stays blocked.
  */
 export default function robots(): MetadataRoute.Robots {
   const site = getSiteUrl();
@@ -35,6 +36,26 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: "PerplexityBot",
+        allow: "/",
+        disallow: ["/admin", "/admin/", "/api/", "/api"],
+      },
+      {
+        userAgent: "Perplexity-User",
+        allow: "/",
+        disallow: ["/admin", "/admin/", "/api/", "/api"],
+      },
+      {
+        userAgent: "Claude-SearchBot",
+        allow: "/",
+        disallow: ["/admin", "/admin/", "/api/", "/api"],
+      },
+      {
+        userAgent: "Claude-User",
+        allow: "/",
+        disallow: ["/admin", "/admin/", "/api/", "/api"],
+      },
+      {
+        userAgent: "Claude-Web",
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
       },

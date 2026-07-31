@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { SITE_NAME } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 type BrandLogoSize = "sm" | "md" | "lg";
@@ -40,7 +41,7 @@ export function BrandLogo({
     >
       <Image
         src="/icon.png"
-        alt="Deals"
+        alt={SITE_NAME}
         width={px}
         height={px}
         priority={priority}

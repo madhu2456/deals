@@ -1,3 +1,5 @@
+import { SITE_LANGUAGE } from "@/lib/site";
+
 function toValidDate(date: Date | string | null | undefined): Date | null {
   if (!date) return null;
   const d = typeof date === "string" ? new Date(date) : date;
@@ -8,7 +10,7 @@ function toValidDate(date: Date | string | null | undefined): Date | null {
 export function formatDate(date: Date | string | null | undefined) {
   const d = toValidDate(date);
   if (!d) return null;
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(SITE_LANGUAGE, {
     year: "numeric",
     month: "short",
     day: "numeric",

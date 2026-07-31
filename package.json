@@ -12,7 +12,12 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:discovery": "tsx scripts/verify-discovery-routes.ts",
+    "test:content": "tsx scripts/verify-content.ts",
+    "test:jsonld": "tsx scripts/verify-jsonld.ts",
+    "test:format": "tsx scripts/verify-format.ts",
+    "test:all": "pnpm test:discovery && pnpm test:content && pnpm test:jsonld && pnpm test:format && npx tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +9,22 @@ import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
 import { DealGrid } from "../../components/DealGrid";
 import { EmptyState } from "../../components/EmptyState";
-import { getCategoryBySlug, getApprovedDeals, getCategories } from "@/lib/data";
-import { getIcon } from "@/lib/icons";
+import { buildCategoryIntro } from "@/lib/category-intro";
+import {
+  countApprovedDealsInCategory,
+  getCategoryBySlug,
+  getApprovedDeals,
+  getCategories,
+  MIN_CATEGORY_DEALS_FOR_INDEX,
+} from "@/lib/data";
+import { iconMap } from "@/lib/icons";
 import {
   breadcrumbSchema,
   itemListSchema,
   JsonLd,
   webPageSchema,
 } from "@/lib/seo/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
 
 /** Compute white or dark text based on background luminance (WCAG 1.4.3). */
 function textColorFor(bgColor: string): string {
@@ -42,6 +49,10 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     return { title: "Category Not Found", robots: { index: false, follow: true } };
   }
 
+  // Total category inventory (not filtered by search q)
+  const dealCount = await countApprovedDealsInCategory(category.slug);
+  const indexable = dealCount >= MIN_CATEGORY_DEALS_FOR_INDEX;
+
   const title = `${category.name} Deals & Discounts`;
   const description =
     category.description ||
@@ -52,16 +63,20 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     title,
     description,
     alternates: { canonical: path },
+    robots: indexable
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
     openGraph: {
       title,
       description,
       url: absoluteUrl(path),
+      images: defaultOgImages(),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [absoluteUrl("/icon-512.png")],
+      images: [defaultOgImage()],
     },
   };
 }
@@ -71,17 +86,37 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const { q } = await searchParams;
   const search = q || "";
 
-  const [category, deals, allCategories] = await Promise.all([
-    getCategoryBySlug(slug),
-    getApprovedDeals({ categorySlug: slug, search }),
-    getCategories(),
-  ]);
+  const [category, deals, allCategories, totalCount, brandDeals] =
+    await Promise.all([
+      getCategoryBySlug(slug),
+      getApprovedDeals({ categorySlug: slug, search }),
+      getCategories(),
+      countApprovedDealsInCategory(slug),
+      // Brands for intro must reflect the full category, not search-filtered results
+      search
+        ? getApprovedDeals({ categorySlug: slug, take: 15 })
+        : Promise.resolve(null),
+    ]);
 
   if (!category) notFound();
 
   const activeCategories = allCategories.filter((c) => c._count.deals > 0);
 
-  const Icon = getIcon(category.icon);
+  const brandSource = brandDeals ?? deals;
+  const intro = buildCategoryIntro({
+    name: category.name,
+    description: category.description,
+    dealCount: totalCount,
+    brandNames: [
+      ...new Set(
+        brandSource
+          .map((d) => d.brandName)
+          .filter((name): name is string => Boolean(name))
+      ),
+    ],
+  });
+
+  const Icon = iconMap[category.icon] ?? Tag;
   const path = `/categories/${category.slug}`;
 
   return (
@@ -89,9 +124,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <JsonLd
         data={webPageSchema({
           title: `${category.name} Deals`,
-          description:
-            category.description ||
-            `Verified ${category.name.toLowerCase()} deals and coupon codes.`,
+          description: intro.lead,
           path,
           type: "CollectionPage",
         })}
@@ -179,6 +212,31 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             </form>
           </div>
         </div>
+
+        <section
+          className="border-b border-border bg-card/40 px-4 py-8 sm:px-6 lg:px-8"
+          aria-labelledby="category-intro-heading"
+        >
+          <div className="mx-auto max-w-3xl">
+            <h2
+              id="category-intro-heading"
+              className="text-xl font-bold tracking-tight"
+            >
+              {intro.heading}
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+              <strong className="font-semibold text-foreground">{intro.lead}</strong>
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {intro.body}
+            </p>
+            <ul className="mt-4 list-inside list-disc space-y-1.5 text-sm text-muted-foreground">
+              {intro.bullets.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-wrap items-center gap-2">
