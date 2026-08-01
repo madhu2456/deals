@@ -48,13 +48,15 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [categories, featuredDeals, latestDeals, popularBrands] =
-    await Promise.all([
-      getCategories(),
-      getFeaturedDeals(4),
-      getLatestDeals(8),
-      getPopularBrandNames(5),
-    ]);
+  // Fetch featured first so its IDs can be excluded from "Latest" (no overlap)
+  const featuredDeals = await getFeaturedDeals(4);
+  const featuredIds = featuredDeals.map((d) => d.id);
+
+  const [categories, latestDeals, popularBrands] = await Promise.all([
+    getCategories(),
+    getLatestDeals(8, featuredIds),
+    getPopularBrandNames(5),
+  ]);
 
   const totalDeals = categories.reduce(
     (sum, category) => sum + category._count.deals,

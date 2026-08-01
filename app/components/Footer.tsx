@@ -79,7 +79,7 @@ export function Footer() {
                 <a
                   href="https://madhudadi.in"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer me"
                   className={externalLinkClass}
                 >
                   Meet Madhu
@@ -90,7 +90,7 @@ export function Footer() {
                 <a
                   href="https://madhudadi.in/blog"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer me"
                   className={externalLinkClass}
                 >
                   Read the blog
@@ -101,7 +101,7 @@ export function Footer() {
                 <a
                   href="https://udemyenroller.madhudadi.in"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer me"
                   className={externalLinkClass}
                 >
                   Udemy Course Enroller

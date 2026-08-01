@@ -145,10 +145,14 @@ export async function getFeaturedDeals(take = 6) {
   return getApprovedDeals({ featuredOnly: true, take });
 }
 
-export async function getLatestDeals(take = 6) {
+export async function getLatestDeals(take = 6, excludeIds: string[] = []) {
   return prisma.deal.findMany({
     where: {
-      AND: [{ status: "APPROVED" }, notExpiredFilter()],
+      AND: [
+        { status: "APPROVED" },
+        notExpiredFilter(),
+        ...(excludeIds.length > 0 ? [{ id: { notIn: excludeIds } }] : []),
+      ],
     },
     orderBy: [{ approvedAt: "desc" }, { createdAt: "desc" }],
     take,
