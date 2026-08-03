@@ -106,6 +106,8 @@ apt-get install -y certbot python3-certbot-nginx
 certbot --nginx -d deals.madhudadi.in -d www.deals.madhudadi.in
 ```
 
+> Note: DNS must exist first — A record (apex → droplet IP) and CNAME www → deals.madhudadi.in (Proxied) — before certbot runs; it must see both names to issue the www certificate.
+
 ### 3. GitHub Actions CI/CD
 
 Add **repository secrets**:
@@ -160,6 +162,7 @@ See [`.env.example`](./.env.example). Important:
 
 - Dynamic `sitemap.xml` + AI-friendly `robots.txt`
 - JSON-LD: Organization, WebSite, FAQ, Product/Offer, Breadcrumbs, ItemList
+- Deal JSON-LD prices derive only from parseable currency-prefixed `discountedPrice` values; FREE_TIER deals emit price `"0"`; unparseable prices are omitted rather than estimated.
 - Answer-first homepage copy + FAQ for answer engines
 - [`/llms.txt`](./public/llms.txt) for LLM context
 

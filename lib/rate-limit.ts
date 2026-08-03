@@ -1,5 +1,11 @@
 const limiters = new Map<string, { count: number; resetAt: number }>();
 
+/** Drop expired entries once the map grows past a threshold — keeps memory bounded. */
+function sweepExpired(now: number): void {
+  if (limiters.size <= 1000) return;
+  for (const [k, e] of limiters) if (now >= e.resetAt) limiters.delete(k);
+}
+
 /**
  * Simple in-memory rate limiter. For production multi-instance deploys,
  * replace with Upstash Redis-backed rate limiter.
@@ -15,6 +21,7 @@ export function isRateLimited(
   windowMs: number
 ): boolean {
   const now = Date.now();
+  sweepExpired(now);
   const entry = limiters.get(key);
 
   if (!entry || now >= entry.resetAt) {
@@ -29,4 +36,9 @@ export function isRateLimited(
 
   entry.count += 1;
   return false;
+}
+
+/** Number of tracked limiter keys — exported for the smoke tests. */
+export function getRateLimiterSize(): number {
+  return limiters.size;
 }

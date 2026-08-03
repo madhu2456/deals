@@ -64,11 +64,3 @@ export const SEO_PARTNER = {
   url: "https://adticks.com",
   description: "SEO & GEO optimization",
 };
-
-export const SAME_AS = [
-  PUBLISHER.url,
-  PUBLISHER.blog,
-  PUBLISHER.udemyEnroller,
-  SEO_PARTNER.url,
-  "https://github.com/madhu2456/deals",
-];

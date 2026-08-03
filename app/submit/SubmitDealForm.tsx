@@ -27,6 +27,7 @@ interface Category {
 export function SubmitDealForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [timestamp] = useState(() => Date.now());
@@ -41,6 +42,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
     setErrors({});
+    setFormError(null);
 
     try {
       const result = await submitDealAction(formData);
@@ -55,6 +57,10 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
       } else if ("errors" in result && result.errors) {
         setErrors(result.errors);
         toast.error("Please fix the highlighted fields");
+      } else if ("error" in result && result.error) {
+        setErrors({});
+        setFormError(result.error);
+        toast.error(result.error);
       }
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -80,7 +86,15 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
           We’ll review your deal and publish it if it meets our guidelines.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={() => setSuccess(false)}>Submit another deal</Button>
+          <Button
+            onClick={() => {
+              setSuccess(false);
+              setErrors({});
+              setFormError(null);
+            }}
+          >
+            Submit another deal
+          </Button>
           <Button asChild variant="outline">
             <Link href="/deals">Browse deals</Link>
           </Button>
@@ -102,6 +116,14 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
 
       {/* Timestamp for bot detection — created on first render */}
       <input type="hidden" name="timestamp" value={String(timestamp)} />
+      {formError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        >
+          {formError}
+        </div>
+      )}
       {errorKeys.length > 0 && (
         <div
           role="alert"

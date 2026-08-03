@@ -60,6 +60,50 @@ jobs:
           fi
           echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
 
+      # ── Test gate: JSON-LD/price fixtures + type safety, BEFORE deploy ──
+      # pnpm is pinned via the packageManager field (pnpm@9.15.9) using
+      # pnpm/action-setup; the committed pnpm-lock.yaml enables a frozen install.
+      # NOTE: `pnpm test:all` is NOT run here — it chains verify-content and
+      # verify-discovery, which exercise app routes / Next modules that can pull
+      # in DB- or env-dependent code, and this runner has no DB service. CI runs
+      # only the fast, DB-free gate: test:jsonld (price-parser regression
+      # fixtures) + test:rate-limit (pure libs only: lib/ip, lib/deal-url,
+      # lib/rate-limit — no DB/env imports, so it is gate-safe) + test:format
+      # (pure libs only: lib/format, lib/site — likewise gate-safe) + tsc --noEmit.
+      # Tests must pass before anything deploys.
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: "Install pnpm (packageManager: pnpm@9.15.9)"
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Set up Node 22 (LTS; Next.js 16 requires >= 20.9)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: JSON-LD + price-parser regression fixtures
+        run: pnpm test:jsonld
+
+      # DB-free (pure libs only: lib/format, lib/site) and ~1s,
+      # so it fits the gate's exclusion rationale for test:all.
+      - name: Format helpers regression
+        run: pnpm test:format
+
+      # DB-free (pure libs only: lib/ip, lib/deal-url, lib/rate-limit) and ~1s,
+      # so it fits the gate's exclusion rationale for test:all.
+      - name: Rate-limit + IP trust + URL normalization regression
+        run: pnpm test:rate-limit
+
+      - name: Type safety
+        run: npx tsc --noEmit
+
       - name: Deploy over SSH as madhu
         uses: appleboy/ssh-action@v1.2.0
         with:

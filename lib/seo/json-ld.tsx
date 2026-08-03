@@ -2,7 +2,6 @@ import {
   absoluteUrl,
   getSiteUrl,
   PUBLISHER,
-  SAME_AS,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_NAME_SHORT,
@@ -40,10 +39,11 @@ export function organizationSchema() {
     description: SITE_DESCRIPTION,
     founder: {
       "@type": "Person",
+      "@id": `${PUBLISHER.url}/#person`,
       name: PUBLISHER.name,
       url: PUBLISHER.url,
     },
-    sameAs: SAME_AS,
+    parentOrganization: { "@id": `${PUBLISHER.url}/#organization` },
   };
 }
 
@@ -152,14 +152,46 @@ export function itemListSchema({
   };
 }
 
-/** Extract a numeric price from a string like "$29.99", "Free", "6 months free", etc. Returns null if unparseable. */
-function extractPrice(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  // Handle "free" / non-numeric
-  const cleaned = raw.replace(/[^0-9.]/g, "");
-  if (!cleaned) return null;
-  const num = parseFloat(cleaned);
-  return Number.isNaN(num) ? null : num;
+const CURRENCY_BY_SYMBOL: Record<string, string> = { $: "USD", "₹": "INR", "€": "EUR", "£": "GBP" };
+// Full-match, currency-anchored. One optional decimal group, no multi-dot. Optional trailing monthly suffix.
+const STRICT_PRICE_RE = /^[$₹€£]\s*\d[\d,]*(?:\.\d+)?\s*(?:\/mo|\/month| per month| monthly)?$/i;
+
+/**
+ * Parse a price string ONLY when it is a complete, currency-anchored amount
+ * ("$299.99", "₹12,999/mo"). Free-text ("Free (6 months)", "Save 20%") never
+ * matches, so a free deal cannot accidentally produce a price.
+ */
+function parseStrictPrice(
+  raw: string | null | undefined
+): { price: number | null; currency: string | null; isMonthly: boolean } {
+  const s = (raw ?? "").trim();
+  const m = STRICT_PRICE_RE.exec(s);
+  if (!m) return { price: null, currency: null, isMonthly: false };
+  // Digits portion of the match, with the trailing monthly suffix removed.
+  const digits = m[0].replace(/(?:\/mo|\/month| per month| monthly)$/i, "");
+  // European decimal comma ("€5,50") would misparse as 550 after comma-strip — reject instead of fabricating.
+  // Valid thousands groups stay: ₹12,999 / ₹5,00,000 / $1,234 / $1,234.56 (dot present → rule skipped).
+  if (!digits.includes(".") && /,\d{1,2}$/.test(digits)) {
+    return { price: null, currency: null, isMonthly: false };
+  }
+  // Strip thousands separators BEFORE parseFloat (₹1,299 → 1299, never 1.299).
+  const num = Number.parseFloat(m[0].replace(/,/g, "").replace(/[$₹€£]/g, ""));
+  // Belt-and-suspenders — the anchored regex already blocks multi-dot strings.
+  if (!Number.isFinite(num)) return { price: null, currency: null, isMonthly: false };
+  // Magnitude cap — absurd values like "$99999999999999999999" (→ 1e+23) are data errors, not prices.
+  if (num > 1e7) return { price: null, currency: null, isMonthly: false };
+  const isMonthly = /(?:\/mo|\/month| per month| monthly)$/i.test(m[0]);
+  const currency = CURRENCY_BY_SYMBOL[m[0].charAt(0)] ?? null;
+  return { price: num, currency, isMonthly };
+}
+
+/** First currency symbol found across the given strings, defaulting to USD. */
+function detectCurrency(strings: (string | null | undefined)[]): string {
+  for (const s of strings) {
+    const symbol = s?.match(/[$₹€£]/)?.[0];
+    if (symbol) return CURRENCY_BY_SYMBOL[symbol];
+  }
+  return "USD";
 }
 
 export function offerSchema(deal: {
@@ -174,6 +206,7 @@ export function offerSchema(deal: {
   discountValue?: string | null;
   originalPrice?: string | null;
   discountedPrice?: string | null;
+  discountType: string;
   logoUrl?: string | null;
   expiryDate?: Date | string | null;
   approvedAt?: Date | string | null;
@@ -188,15 +221,21 @@ export function offerSchema(deal: {
     : "https://schema.org/InStock";
 
   // ── Price extraction ──────────────────────────────────
-  const priceNum = extractPrice(deal.discountedPrice) ?? extractPrice(deal.originalPrice) ?? 0;
+  const strict = parseStrictPrice(deal.discountedPrice);
+  const isFreeTier = deal.discountType === "FREE_TIER";
+  const currency = detectCurrency([deal.discountedPrice, deal.originalPrice, deal.discountValue]);
+  // FREE_TIER wins over any parseable string (admin mistakes can't fabricate a price on a free deal).
+  const priceValue: string | number | null = isFreeTier ? "0" : strict.price;
+  const hasPrice = priceValue !== null;
+  // Monthly billing signal ONLY for real (non-free) prices, derived ONLY from the discountedPrice match.
+  const billingDuration = hasPrice && !isFreeTier && strict.isMonthly ? "P1M" : null;
 
   const offer: Record<string, unknown> = {
     "@type": "Offer",
     "@id": `${url}#offer`,
     name: deal.title,
     description: deal.shortDescription || deal.description,
-    price: priceNum,
-    priceCurrency: "USD",
+    ...(hasPrice ? { price: priceValue, priceCurrency: currency } : {}),
     // Landing page on our site (mainEntityOfPage) + merchant URL (url)
     url: deal.dealUrl,
     mainEntityOfPage: url,
@@ -243,12 +282,15 @@ export function offerSchema(deal: {
           disambiguatingDescription: `Coupon code: ${deal.couponCode}`,
         }
       : {}),
-    ...(deal.discountValue
+    ...(deal.discountValue && hasPrice
       ? {
           priceSpecification: {
-            "@type": "PriceSpecification",
-            price: priceNum,
-            priceCurrency: "USD",
+            // billingDuration is a UnitPriceSpecification property (schema.org), not an Offer property
+            "@type": "UnitPriceSpecification",
+            "@id": `${url}#priceSpec`, // new stable fragment
+            price: priceValue,
+            priceCurrency: currency,
+            ...(billingDuration ? { billingDuration } : {}),
             description: deal.discountValue,
             name: deal.discountValue,
           },

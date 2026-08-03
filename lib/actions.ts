@@ -8,6 +8,8 @@ import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
 import { isRateLimited } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/ip";
+import { normalizeDealUrl } from "@/lib/deal-url";
 import type { CreateDealInput } from "@/lib/data";
 
 const DISCOUNT_TYPES = new Set([
@@ -19,6 +21,32 @@ const DISCOUNT_TYPES = new Set([
 ]);
 
 const DEAL_STATUSES = new Set(["PENDING", "APPROVED", "REJECTED", "EXPIRED"]);
+
+const GENERIC = "There was a problem with your submission. Please try again.";
+
+/** Module-scope env parse — warns on invalid values, never throws at request time. */
+const parsePositiveInt = (
+  raw: string | undefined,
+  fallback: number,
+  name: string
+): number => {
+  const n = Number.parseInt(raw ?? "", 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  if (raw !== undefined && raw !== "") {
+    console.warn(`[rate-limit] invalid ${name} value "${raw}", using ${fallback}`);
+  }
+  return fallback;
+};
+const submitMaxAttempts = parsePositiveInt(
+  process.env.SUBMIT_MAX_ATTEMPTS,
+  5,
+  "SUBMIT_MAX_ATTEMPTS"
+);
+const submitWindowMs = parsePositiveInt(
+  process.env.SUBMIT_WINDOW_MS,
+  60 * 60 * 1000,
+  "SUBMIT_WINDOW_MS"
+);
 
 function isValidHttpUrl(value: string) {
   try {
@@ -45,15 +73,27 @@ function parseOptionalDate(raw: string): Date | null | false {
 }
 
 export async function submitDealAction(formData: FormData) {
+  // Entry-count guard first (cheap, pre-parse): a real form has < 20 fields.
+  const entries = formData.entries();
+  let fieldCount = 0;
+  while (!entries.next().done) fieldCount += 1;
+  if (fieldCount > 20) {
+    return { success: false as const, error: GENERIC };
+  }
+
   const raw = Object.fromEntries(formData.entries());
 
   // Bot protection — honeypot filled or form submitted too fast
   if (String(raw.website || "").trim()) {
-    return { success: false as const, errors: {} };
+    return { success: false as const, error: GENERIC };
   }
   const timestamp = Number(String(raw.timestamp || "0"));
-  if (!timestamp || Date.now() - timestamp < 3000) {
-    return { success: false as const, errors: {} };
+  // One-sided age check: rejects immediate (<3s), future (bots timestamp ahead),
+  // and ludicrously-old (>24h) submissions. Unlike Math.abs, it never rejects
+  // slow-clock users — a device >3s behind is a legitimate human, not a bot.
+  const age = Date.now() - timestamp;
+  if (!timestamp || age < 3000 || age > 24 * 3600 * 1000) {
+    return { success: false as const, error: GENERIC };
   }
 
   const title = String(raw.title || "").trim();
@@ -64,21 +104,92 @@ export async function submitDealAction(formData: FormData) {
   const submittedByName = String(raw.submittedByName || "").trim();
   const submittedByEmail = String(raw.submittedByEmail || "").trim();
   const discountType = String(raw.discountType || "OTHER").trim();
+  const discountValue = String(raw.discountValue || "").trim();
+  const couponCode = String(raw.couponCode || "").trim();
 
   const errors: Record<string, string> = {};
 
   if (!title || title.length < 3) errors.title = "Title is required (min 3 chars)";
+  if (title.length > 150) errors.title = "Title must be 150 chars or less";
   if (!brandName) errors.brandName = "Brand name is required";
+  if (brandName.length > 100) errors.brandName = "Brand name must be 100 chars or less";
   if (!dealUrl || !isValidHttpUrl(dealUrl)) errors.dealUrl = "A valid URL is required";
+  if (dealUrl.length > 2048) errors.dealUrl = "Deal URL must be 2048 chars or less";
   if (!categoryId) errors.categoryId = "Category is required";
   if (!description || description.length < 20)
     errors.description = "Description is required (min 20 chars)";
+  if (description.length > 5000)
+    errors.description = "Description must be 5000 chars or less";
   if (!submittedByEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submittedByEmail))
     errors.submittedByEmail = "A valid email is required";
+  if (submittedByEmail.length > 254) errors.submittedByEmail = "Email must be 254 chars or less";
+  if (submittedByName.length > 100) errors.submittedByName = "Name must be 100 chars or less";
   if (!DISCOUNT_TYPES.has(discountType)) errors.discountType = "Invalid discount type";
+  if (discountValue.length > 100) errors.discountValue = "Discount value must be 100 chars or less";
+  if (couponCode.length > 100) errors.couponCode = "Coupon code must be 100 chars or less";
 
   if (Object.keys(errors).length > 0) {
     return { success: false as const, errors };
+  }
+
+  // Aggregate size guard — computed from string values only; Blob/File values
+  // count as 0 (no file inputs exist on this form).
+  const totalSize = Object.values(raw).reduce(
+    (n, v) => n + (typeof v === "string" ? v.length : 0),
+    0
+  );
+  if (totalSize > 64 * 1024) {
+    return { success: false as const, error: GENERIC };
+  }
+
+  // Rate limit must precede ANY DB read (incl. the category findFirst below).
+  // NODE_ENV guard: dev/test skips limiting — direct connections share the
+  // "unknown" bucket and would self-lockout a dev.
+  const ip = getClientIp(await headers());
+  if (
+    process.env.NODE_ENV === "production" &&
+    isRateLimited(`submit:${ip}`, submitMaxAttempts, submitWindowMs)
+  ) {
+    return {
+      success: false as const,
+      error: "Too many submissions from your IP. Please try again later.",
+    };
+  }
+
+  // Best-effort dedupe (TOCTOU accepted: two concurrent identical submissions
+  // may both pass — SQLite serializes writes, not the read-check). Never
+  // reveals existence: generic success, no insert. Legacy/seed rows store RAW
+  // urls with ref/utm params — exact match only catches identical strings; the
+  // origin-prefix scan + in-memory normalization catches ref-variant duplicates
+  // of existing rows. Ref-denylist is best-effort — other params can evade;
+  // admin can edit the stored URL when the better affiliate link matters.
+  // Stored dealUrl keeps the raw string — no schema/backfill.
+  // REJECTED/EXPIRED rows are excluded from both queries: rejected deals are
+  // legitimately resubmittable after fixes, and expired recurring offers must
+  // be re-submitted for renewal. Only PENDING/APPROVED dedupe — prevents queue
+  // spam and duplicates without making rejection/expiry permanent.
+  const rawTrimmed = dealUrl.trim();
+  const normalizedUrl = normalizeDealUrl(dealUrl);
+  if (normalizedUrl) {
+    const exact = await prisma.deal.findFirst({
+      where: {
+        dealUrl: { in: [rawTrimmed, normalizedUrl] },
+        status: { notIn: ["REJECTED", "EXPIRED"] },
+      },
+      select: { id: true },
+    });
+    if (exact) return { success: true as const };
+    const origin = new URL(normalizedUrl).origin;
+    const candidates = await prisma.deal.findMany({
+      where: {
+        dealUrl: { startsWith: origin },
+        status: { notIn: ["REJECTED", "EXPIRED"] },
+      },
+      select: { dealUrl: true },
+    });
+    if (candidates.some((c) => normalizeDealUrl(c.dealUrl) === normalizedUrl)) {
+      return { success: true as const };
+    }
   }
 
   const category = await prisma.category.findFirst({
@@ -109,8 +220,8 @@ export async function submitDealAction(formData: FormData) {
         description,
         shortDescription: truncateAtWord(description),
         discountType,
-        discountValue: String(raw.discountValue || "").trim() || null,
-        couponCode: String(raw.couponCode || "").trim() || null,
+        discountValue: discountValue || null,
+        couponCode: couponCode || null,
         submittedByName: submittedByName || null,
         submittedByEmail,
         status: "PENDING",
@@ -139,14 +250,14 @@ export async function loginAdminAction(formData: FormData) {
     return { success: false as const, error: "Username and password are required" };
   }
 
-  // Rate limit: max 5 attempts per 15 minutes per IP
-  const headersList = await headers();
-  const ip =
-    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headersList.get("x-real-ip") ||
-    "unknown";
+  // Rate limit: max 5 attempts per 15 minutes per IP. Failed AND successful
+  // attempts both consume budget — security-correct order, documented.
+  const ip = getClientIp(await headers());
 
-  if (isRateLimited(`login:${ip}`, 5, 15 * 60 * 1000)) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    isRateLimited(`login:${ip}`, 5, 15 * 60 * 1000)
+  ) {
     return {
       success: false as const,
       error: "Too many login attempts. Please try again in 15 minutes.",

@@ -39,17 +39,13 @@ export async function GET() {
         url: site,
         description: SITE_DESCRIPTION,
         logo: `${site}/icon-512.png`,
+        parentOrganization: { "@id": `${PUBLISHER.url}/#organization` },
         founder: {
           "@type": "Person",
           "@id": `${PUBLISHER.url}/#person`,
           name: PUBLISHER.name,
           url: PUBLISHER.url,
         },
-        sameAs: [
-          PUBLISHER.url,
-          PUBLISHER.blog,
-          "https://github.com/madhu2456/deals",
-        ],
       },
       {
         "@type": "WebSite",

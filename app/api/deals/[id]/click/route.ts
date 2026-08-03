@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { incrementClicks } from "@/lib/data";
 import { isRateLimited } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/ip";
 
 export async function POST(
   request: NextRequest,
@@ -12,13 +13,11 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Invalid deal id" }, { status: 400 });
   }
 
-  // Rate limit: max 10 clicks per minute per IP
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  // Rate limit: max 10 clicks per minute per IP. NODE_ENV guard: dev/test
+  // skips limiting — direct connections share the "unknown" bucket.
+  const ip = getClientIp(request.headers);
 
-  if (isRateLimited(`click:${ip}`, 10, 60 * 1000)) {
+  if (process.env.NODE_ENV === "production" && isRateLimited(`click:${ip}`, 10, 60 * 1000)) {
     return NextResponse.json(
       { success: false, error: "Too many requests" },
       { status: 429 }

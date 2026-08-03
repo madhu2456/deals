@@ -45,10 +45,9 @@ const today = new Date(Date.now() - 1000);
 const relToday = formatRelativeDate(today.toISOString());
 assert(relToday === "Ends today", `relative today: ${relToday}`);
 
-// Tomorrow
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
-tomorrow.setHours(12, 0, 0, 0);
+// Tomorrow — midnight-based so diffDays is exactly 1 regardless of the run time of day
+const now = new Date();
+const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 const relTomorrow = formatRelativeDate(tomorrow.toISOString());
 assert(relTomorrow === "Ends tomorrow", `relative tomorrow: ${relTomorrow}`);
 
