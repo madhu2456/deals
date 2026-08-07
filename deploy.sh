@@ -179,6 +179,17 @@ install_nginx_from_repo() {
   as_root ln -sfn "${dest}" "${enabled}" || true
   as_root mkdir -p /var/www/html || true
 
+  # Install repo Cloudflare real-IP conf.d snippets → /etc/nginx/conf.d/.
+  # Required by the `include conf.d/00-cloudflare-real-ip.conf;` in deals.*.conf;
+  # without it nginx -t fails ("conf.d/00-cloudflare-real-ip.conf" not found).
+  if [ -d "${APP_DIR}/nginx/conf.d" ]; then
+    as_root mkdir -p /etc/nginx/conf.d || true
+    for snippet in "${APP_DIR}/nginx/conf.d"/*.conf; do
+      [ -f "${snippet}" ] || continue
+      as_root cp "${snippet}" /etc/nginx/conf.d/ || true
+    done
+  fi
+
   if as_root nginx -t; then
     as_root systemctl reload nginx || as_root service nginx reload || true
     echo "  Nginx reloaded with git config for ${DOMAIN} → 127.0.0.1:${APP_PORT}"
