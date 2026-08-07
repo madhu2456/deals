@@ -71,7 +71,6 @@ COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/app ./app
 COPY --from=builder /app/components ./components
-COPY --from=builder /app/middleware.ts ./middleware.ts
 COPY --from=builder /app/components.json ./components.json
 
 COPY docker/entrypoint.sh /entrypoint.sh

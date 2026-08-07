@@ -198,6 +198,22 @@ export async function getDealBySlug(slug: string) {
   });
 }
 
+/**
+ * Returns a deal ONLY if it was previously APPROVED and has since expired
+ * (non-null expiryDate in the past). Never returns PENDING/REJECTED/EXPIRED-status
+ * rows or perpetual deals (null expiryDate) — those must keep 404.
+ */
+export async function getExpiredApprovedDealBySlug(slug: string) {
+  return prisma.deal.findFirst({
+    where: {
+      slug,
+      status: "APPROVED",
+      expiryDate: { not: null, lt: new Date() },
+    },
+    select: publicDealSelect,
+  });
+}
+
 export async function getDealById(id: string) {
   return prisma.deal.findUnique({
     where: { id },
