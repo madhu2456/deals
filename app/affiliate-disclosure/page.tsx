@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
-import { SITE_NAME } from "@/lib/site";
+import { absoluteUrl, defaultOgImage, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Affiliate Disclosure",
   description: `Transparency about how affiliate and referral links work on ${SITE_NAME}.`,
   alternates: { canonical: "/affiliate-disclosure" },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: `Affiliate Disclosure | ${SITE_NAME}`,
+    description: `Transparency about how affiliate and referral links work on ${SITE_NAME}.`,
+    url: absoluteUrl("/affiliate-disclosure"),
+    type: "website",
+    images: defaultOgImages(),
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Affiliate Disclosure | ${SITE_NAME}`,
+    description: `Transparency about how affiliate and referral links work on ${SITE_NAME}.`,
+    images: [defaultOgImage()],
+  },
 };
 
 export default function AffiliateDisclosurePage() {
