@@ -10,6 +10,7 @@ import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
+import { absoluteUrl } from "@/lib/site";
 import { isAllowedLogoUrl, isSvgLogo } from "@/app/components/LogoImage";
 import type { CreateDealInput } from "@/lib/data";
 
@@ -380,6 +381,17 @@ export async function adminApproveDealAction(id: string) {
   revalidatePath("/categories");
   if (existing.slug) revalidatePath(`/deals/${existing.slug}`);
   revalidatePath("/sitemap.xml");
+
+  // Fire-and-forget IndexNow ping — never blocks or fails the approval.
+  const indexNowKey = process.env.INDEXNOW_KEY;
+  if (existing.slug && indexNowKey) {
+    void fetch(
+      `https://api.indexnow.org/indexnow?url=${encodeURIComponent(absoluteUrl(`/deals/${existing.slug}`))}&key=${indexNowKey}`,
+      { method: "GET", headers: { Host: "api.indexnow.org" } }
+    ).catch(() => {
+      /* ping failure is non-fatal; the approval is already committed */
+    });
+  }
 
   return { success: true as const };
 }
