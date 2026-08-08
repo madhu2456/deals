@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,36 +15,101 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { DealGrid } from "../components/DealGrid";
 import { EmptyState } from "../components/EmptyState";
-import { getApprovedDeals, getCategories } from "@/lib/data";
+import {
+  countApprovedDeals,
+  getApprovedDeals,
+  getApprovedDealsPaginated,
+  getCategories,
+  PAGINATION_THRESHOLD,
+  type PublicDeal,
+} from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
 import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Browse Verified Deals & Coupon Codes",
-  description:
-    "Search and filter verified deals, coupon codes, and exclusive discounts on software, SaaS tools, and products. Updated regularly.",
-  alternates: { canonical: "/deals" },
-  openGraph: {
-    title: "Browse Verified Deals & Coupon Codes",
-    description:
-      "Search and filter verified deals, coupon codes, and exclusive discounts.",
-    url: absoluteUrl("/deals"),
-    images: defaultOgImages(),
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Browse Verified Deals & Coupon Codes",
-    description:
-      "Search and filter verified deals, coupon codes, and exclusive discounts.",
-    images: [defaultOgImage()],
-  },
-};
-
 interface DealsPageProps {
-  searchParams: Promise<{ q?: string; category?: string; featured?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    featured?: string;
+    cursor?: string;
+  }>;
+}
+
+/** /deals URL preserving the active filters (pagination hrefs). */
+function dealsPath({
+  search,
+  categorySlug,
+  featuredOnly,
+  cursor,
+}: {
+  search: string;
+  categorySlug: string;
+  featuredOnly: boolean;
+  cursor?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (search) params.set("q", search);
+  if (categorySlug) params.set("category", categorySlug);
+  if (featuredOnly) params.set("featured", "1");
+  if (cursor) params.set("cursor", cursor);
+  const query = params.toString();
+  return query ? `/deals?${query}` : "/deals";
+}
+
+/**
+ * Canonical /deals URL: active filters preserved, cursor never included, so
+ * every page — page 1, minted cursor pages, garbage cursor URLs — resolves to
+ * the same bare filtered URL. Deeper pages stay crawlable through the
+ * rel=next links instead of self-canonicalizing.
+ */
+function canonicalDealsPath({
+  search,
+  categorySlug,
+  featuredOnly,
+}: {
+  search: string;
+  categorySlug: string;
+  featuredOnly: boolean;
+}): string {
+  return dealsPath({ search, categorySlug, featuredOnly });
+}
+
+export async function generateMetadata({
+  searchParams,
+}: DealsPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  // Bare /deals + active filters (q/category/featured), NEVER the cursor:
+  // minted and garbage cursor URLs all consolidate to the canonical, so they
+  // cannot become separately indexable duplicate pages.
+  const canonical = canonicalDealsPath({
+    search: params.q || "",
+    categorySlug: params.category || "",
+    featuredOnly: params.featured === "1",
+  });
+
+  return {
+    title: "Browse Verified Deals & Coupon Codes",
+    description:
+      "Search and filter verified deals, coupon codes, and exclusive discounts on software, SaaS tools, and products. Updated regularly.",
+    alternates: { canonical },
+    openGraph: {
+      title: "Browse Verified Deals & Coupon Codes",
+      description:
+        "Search and filter verified deals, coupon codes, and exclusive discounts.",
+      url: absoluteUrl(canonical),
+      images: defaultOgImages(),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Browse Verified Deals & Coupon Codes",
+      description:
+        "Search and filter verified deals, coupon codes, and exclusive discounts.",
+      images: [defaultOgImage()],
+    },
+  };
 }
 
 export default async function DealsPage({ searchParams }: DealsPageProps) {
@@ -45,15 +117,36 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
   const search = params.q || "";
   const categorySlug = params.category || "";
   const featuredOnly = params.featured === "1";
+  const cursorParam = params.cursor || "";
+  // Same canonical the metadata uses: bare /deals + filters, no cursor.
+  const canonicalPath = canonicalDealsPath({ search, categorySlug, featuredOnly });
 
-  const [deals, categories] = await Promise.all([
-    getApprovedDeals({
+  const [totalDealCount, categories] = await Promise.all([
+    countApprovedDeals(),
+    getCategories(),
+  ]);
+
+  // Scale gate: at or below the threshold the page renders exactly as before
+  // (all deals, no pagination UI); above it we keyset-paginate.
+  const paginate = totalDealCount > PAGINATION_THRESHOLD;
+
+  let deals: PublicDeal[];
+  let nextCursor: string | null = null;
+  let hasPrevious = false;
+
+  if (paginate) {
+    const page = await getApprovedDealsPaginated({
+      cursor: cursorParam || undefined,
       search,
       categorySlug,
       featuredOnly,
-    }),
-    getCategories(),
-  ]);
+    });
+    deals = page.deals;
+    nextCursor = page.hasNext ? page.nextCursor : null;
+    hasPrevious = page.hasCursor;
+  } else {
+    deals = await getApprovedDeals({ search, categorySlug, featuredOnly });
+  }
 
   const activeCategories = categories.filter((c) => c._count.deals > 0);
 
@@ -81,7 +174,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
           title: pageTitle,
           description:
             "Search and filter verified deals, coupon codes, and exclusive discounts.",
-          path: "/deals",
+          path: canonicalPath,
           type: "CollectionPage",
         })}
       />
@@ -90,7 +183,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
           data={itemListSchema({
             name: pageTitle,
             description: `${deals.length} verified deals matching your filters.`,
-            path: "/deals",
+            path: canonicalPath,
             items: deals.slice(0, 50).map((d) => ({
               name: d.title,
               path: `/deals/${d.slug}`,
@@ -226,7 +319,41 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
           </div>
 
           {deals.length > 0 ? (
-            <DealGrid deals={deals} />
+            <>
+              <DealGrid deals={deals} />
+              {(nextCursor || hasPrevious) && (
+                <nav
+                  aria-label="Deals pagination"
+                  className="mt-10 flex items-center justify-center gap-4"
+                >
+                  {hasPrevious && (
+                    <Link
+                      rel="prev"
+                      href={dealsPath({ search, categorySlug, featuredOnly })}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      Back to first page
+                    </Link>
+                  )}
+                  {nextCursor && (
+                    <Link
+                      rel="next"
+                      href={dealsPath({
+                        search,
+                        categorySlug,
+                        featuredOnly,
+                        cursor: nextCursor,
+                      })}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Next page
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
+                </nav>
+              )}
+            </>
           ) : (
             <EmptyState
               title="No deals found"
