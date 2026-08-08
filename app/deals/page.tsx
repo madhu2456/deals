@@ -107,11 +107,13 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
             <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {pageTitle}
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              <span className="font-medium tabular-nums text-foreground">{deals.length}</span>{" "}
-              {deals.length === 1 ? "deal" : "deals"} found
-              {hasFilters ? " with your filters" : ""}
-            </p>
+            {deals.length > 0 && (
+              <p role="status" aria-live="polite" className="mt-2 text-muted-foreground">
+                <span className="font-medium tabular-nums text-foreground">{deals.length}</span>{" "}
+                {deals.length === 1 ? "deal" : "deals"} found
+                {hasFilters ? " with your filters" : ""}
+              </p>
+            )}
 
             <form
               action="/deals"
