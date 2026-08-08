@@ -10,6 +10,7 @@ import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
 import { isRateLimited } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
+import { isAllowedLogoUrl, isSvgLogo } from "@/app/components/LogoImage";
 import type { CreateDealInput } from "@/lib/data";
 
 const DISCOUNT_TYPES = new Set([
@@ -444,6 +445,11 @@ async function parseDealFormData(
   if (!dealUrl || !isValidHttpUrl(dealUrl)) errors.dealUrl = "A valid URL is required";
   if (brandUrl && !isValidHttpUrl(brandUrl)) errors.brandUrl = "Brand URL must be valid";
   if (logoUrl && !isValidHttpUrl(logoUrl)) errors.logoUrl = "Logo URL must be valid";
+  // Mirror of LogoImage's render-time check: the optimizer 400s on hosts
+  // outside remotePatterns and on SVGs, so reject both at the source.
+  if (logoUrl && (!isAllowedLogoUrl(logoUrl) || isSvgLogo(logoUrl)))
+    errors.logoUrl =
+      "logoUrl must be from an allowed image host (see next.config.ts remotePatterns) and not an SVG";
   if (!categoryId) errors.categoryId = "Category is required";
   if (!description || description.length < 20) errors.description = "Description is required";
   if (!DEAL_STATUSES.has(status)) errors.status = "Invalid status";

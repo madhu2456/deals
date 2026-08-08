@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { discountLabel, formatRelativeDate } from "@/lib/format";
 import { trackCopyCoupon } from "@/lib/analytics";
 import type { PublicDeal } from "@/lib/data";
+import { LogoImage } from "./LogoImage";
 
 interface DealCardProps {
   deal: PublicDeal;
@@ -124,8 +125,7 @@ export function DealCard({ deal }: DealCardProps) {
             aria-hidden="true"
           >
             {deal.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <LogoImage
                 src={deal.logoUrl}
                 alt=""
                 width={48}

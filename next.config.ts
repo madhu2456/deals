@@ -46,10 +46,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Restrict remote image optimization to known CDN/logos patterns.
-    // Deal logos that fall outside these can still display via <img> tags
-    // (which the deal detail page already uses). CSP img-src https: handles
-    // browser-side loading of arbitrary merchant logos.
+    // Restrict remote image optimization to known CDN/logo patterns. The
+    // optimizer 400s on hosts outside these patterns and on SVG images (no
+    // dangerouslyAllowSVG), so app/components/LogoImage.tsx serves such logo
+    // URLs as a plain <img> (its host/SVG allowlist mirrors remotePatterns
+    // below). CSP img-src https: handles browser-side loading of arbitrary
+    // merchant logos.
     remotePatterns: [
       { protocol: "https", hostname: "*.cloudfront.net" },
       { protocol: "https", hostname: "*.amazonaws.com" },

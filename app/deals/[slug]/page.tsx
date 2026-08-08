@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
+import { LogoImage } from "../../components/LogoImage";
 import { getDealBySlug, getApprovedDeals } from "@/lib/data";
 import { formatDate, discountLabel } from "@/lib/format";
 import {
@@ -163,12 +164,12 @@ export default async function DealPage({ params }: DealPageProps) {
                   aria-hidden="true"
                 >
                   {deal.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <LogoImage
                       src={deal.logoUrl}
                       alt=""
                       width={64}
                       height={64}
+                      priority
                       className="h-full w-full object-cover"
                     />
                   ) : (
