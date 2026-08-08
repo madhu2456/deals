@@ -73,6 +73,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "Bingbot",
         allow: "/",
         disallow: ["/admin", "/admin/", "/api/", "/api"],
+        crawlDelay: 1,
       },
       {
         userAgent: "Applebot",
