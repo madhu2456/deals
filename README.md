@@ -140,7 +140,7 @@ prisma/              Schema + migrations + seed
 docker/              Container entrypoint
 deploy.sh            Droplet bootstrap / update
 .github/workflows/   CI/CD deploy to DigitalOcean
-public/              Icons, llms.txt, manifest
+public/              Icons, web manifest
 ```
 
 ---
@@ -164,7 +164,7 @@ See [`.env.example`](./.env.example). Important:
 - JSON-LD: Organization, WebSite, FAQ, Product/Offer, Breadcrumbs, ItemList
 - Deal JSON-LD prices derive only from parseable currency-prefixed `discountedPrice` values; FREE_TIER deals emit price `"0"`; unparseable prices are omitted rather than estimated.
 - Answer-first homepage copy + FAQ for answer engines
-- [`/llms.txt`](./public/llms.txt) for LLM context
+- The [`/llms.txt`](https://deals.madhudadi.in/llms.txt) route (`app/llms.txt/route.ts`) for LLM context
 
 Visibility work is supported by **[Adticks](https://adticks.com)** (SEO & GEO).
 
