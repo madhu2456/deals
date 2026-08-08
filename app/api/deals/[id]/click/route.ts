@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { incrementClicks } from "@/lib/data";
-import { isRateLimited } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 
 export async function POST(
@@ -17,7 +17,10 @@ export async function POST(
   // skips limiting — direct connections share the "unknown" bucket.
   const ip = getClientIp(request.headers);
 
-  if (process.env.NODE_ENV === "production" && isRateLimited(`click:${ip}`, 10, 60 * 1000)) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    (await checkRateLimit({ key: `click:${ip}`, limit: 10, windowMs: 60 * 1000 }))
+  ) {
     return NextResponse.json(
       { success: false, error: "Too many requests" },
       { status: 429 }

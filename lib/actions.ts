@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
-import { isRateLimited } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
 import { isAllowedLogoUrl, isSvgLogo } from "@/app/components/LogoImage";
@@ -149,7 +149,11 @@ export async function submitDealAction(formData: FormData) {
   const ip = getClientIp(await headers());
   if (
     process.env.NODE_ENV === "production" &&
-    isRateLimited(`submit:${ip}`, submitMaxAttempts, submitWindowMs)
+    (await checkRateLimit({
+      key: `submit:${ip}`,
+      limit: submitMaxAttempts,
+      windowMs: submitWindowMs,
+    }))
   ) {
     return {
       success: false as const,
@@ -257,7 +261,7 @@ export async function loginAdminAction(formData: FormData) {
 
   if (
     process.env.NODE_ENV === "production" &&
-    isRateLimited(`login:${ip}`, 5, 15 * 60 * 1000)
+    (await checkRateLimit({ key: `login:${ip}`, limit: 5, windowMs: 15 * 60 * 1000 }))
   ) {
     return {
       success: false as const,
