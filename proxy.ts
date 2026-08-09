@@ -4,23 +4,43 @@ import { jwtVerify } from "jose";
 
 const ADMIN_COOKIE = "admin-session";
 
-// TTL cache: 410s are uncached, and deindex sweeps re-crawl the same expired
-// URLs repeatedly. Avoids re-running the Prisma query for hits within 60s.
+// TTL cache: only NON-expired results are cached — a cached entry means "this
+// slug is live, fall through". Never cache a 410: a re-activated deal must not
+// serve a stale 410 from the window, and correctness beats saving a Prisma
+// query on re-crawls of genuinely expired URLs. The TTL bounds how often the
+// query runs for live slugs (deindex sweeps re-crawl the same expired URLs),
+// and the size cap keeps memory bounded under sweep bursts.
 const CACHE_TTL_MS = 60_000;
-const expiredDealCache = new Map<string, { at: number; expired: boolean }>();
+const CACHE_MAX_ENTRIES = 2000;
+const expiredDealCache = new Map<string, { at: number }>();
+
+/** Drop stale entries past the cap; if everything is still fresh, clear. */
+function sweepExpiredDealCache(): void {
+  if (expiredDealCache.size <= CACHE_MAX_ENTRIES) return;
+  const now = Date.now();
+  for (const [slug, entry] of expiredDealCache) {
+    if (now - entry.at >= CACHE_TTL_MS) expiredDealCache.delete(slug);
+  }
+  if (expiredDealCache.size > CACHE_MAX_ENTRIES) {
+    // All entries still within TTL — drop everything rather than grow unbounded.
+    expiredDealCache.clear();
+  }
+}
 
 /**
  * Lazy-imports lib/data (and with it the Prisma client) ONLY on deal paths, so
  * a load-time Prisma failure can never 500 admin/auth requests.
  */
 async function isExpiredApprovedDeal(slug: string): Promise<boolean> {
+  sweepExpiredDealCache();
   const cached = expiredDealCache.get(slug);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.expired;
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return false;
+  if (cached) expiredDealCache.delete(slug);
 
   const { getExpiredApprovedDealBySlug } = await import("@/lib/data");
   const expired = (await getExpiredApprovedDealBySlug(slug)) !== null;
 
-  expiredDealCache.set(slug, { at: Date.now(), expired });
+  if (!expired) expiredDealCache.set(slug, { at: Date.now() });
   return expired;
 }
 

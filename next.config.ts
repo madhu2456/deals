@@ -45,6 +45,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Standalone server output: self-contained .next/standalone bundle. The
+  // Docker runner copies the full .next and the entrypoint still runs `next
+  // start`, so this is additive — it keeps a standalone migration open and
+  // makes the output self-verifiable.
+  output: "standalone",
+  // Site canonicals (`alternates: { canonical }` in lib/seo) and every
+  // internal link are explicitly no-slash; pin the default so a future config
+  // change cannot silently rewrite every URL.
+  trailingSlash: false,
   images: {
     // Restrict remote image optimization to known CDN/logo patterns. The
     // optimizer 400s on hosts outside these patterns and on SVG images (no

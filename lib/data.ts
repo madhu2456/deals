@@ -172,8 +172,10 @@ export async function getApprovedDeals({
  * concurrent inserts. Cursors minted before the featured flag was embedded
  * (2-part `${createdAtISO}|${id}`) still decode; their flag is resolved with
  * a single row lookup.
+ *
+ * Exported for scripts/verify-pagination.ts (permanent no-DB keyset walk).
  */
-function encodeDealsCursor(deal: {
+export function encodeDealsCursor(deal: {
   isFeatured: boolean;
   createdAt: Date;
   id: string;
@@ -188,14 +190,14 @@ function encodeDealsCursor(deal: {
  * whose featured flag must be resolved by row lookup before the keyset bound
  * can be built; malformed input falls back to page 1 (null).
  */
-type DealsCursor = {
+export type DealsCursor = {
   isFeatured: boolean | null;
   createdAt: Date;
   id: string;
 };
 
 /** Decodes a pagination cursor; malformed input falls back to page 1 (null). */
-function decodeDealsCursor(cursor: string | undefined): DealsCursor | null {
+export function decodeDealsCursor(cursor: string | undefined): DealsCursor | null {
   if (!cursor) return null;
   try {
     const raw = Buffer.from(cursor, "base64url").toString("utf8");
@@ -227,8 +229,10 @@ function decodeDealsCursor(cursor: string | undefined): DealsCursor | null {
  * admits non-featured rows past it. Legacy 2-part cursors resolve their
  * featured flag via one row lookup; if that row is gone the bound is
  * unresolvable and the caller restarts from page 1 (null).
+ *
+ * Exported for scripts/verify-pagination.ts (permanent no-DB keyset walk).
  */
-async function dealsAfterCursorBound(
+export async function dealsAfterCursorBound(
   decoded: DealsCursor
 ): Promise<Prisma.DealWhereInput | null> {
   let { isFeatured } = decoded;
