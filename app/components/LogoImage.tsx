@@ -42,8 +42,10 @@ export function isAllowedLogoUrl(url: string): boolean {
         return host === domain || host.endsWith(`.${domain}`);
       }
       if (pattern.startsWith("*.")) {
-        // picomatch `*` matches dots too, so any-depth subdomains match
-        return host.endsWith(pattern.slice(1));
+        // Require the explicit dot (".imgix.net"), so `evilimgix.net` can't
+        // match `*.imgix.net` — picomatch's `*` matches dots, but the
+        // separator before the suffix must be a real dot.
+        return host.endsWith("." + pattern.slice(2));
       }
       return host === pattern;
     });

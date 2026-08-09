@@ -460,12 +460,20 @@ async function parseDealFormData(
   if (!brandName) errors.brandName = "Brand name is required";
   if (!dealUrl || !isValidHttpUrl(dealUrl)) errors.dealUrl = "A valid URL is required";
   if (brandUrl && !isValidHttpUrl(brandUrl)) errors.brandUrl = "Brand URL must be valid";
-  if (logoUrl && !isValidHttpUrl(logoUrl)) errors.logoUrl = "Logo URL must be valid";
-  // Mirror of LogoImage's render-time check: the optimizer 400s on hosts
-  // outside remotePatterns and on SVGs, so reject both at the source.
-  if (logoUrl && (!isAllowedLogoUrl(logoUrl) || isSvgLogo(logoUrl)))
+  if (logoUrl && !isValidHttpUrl(logoUrl)) {
+    errors.logoUrl = "Logo URL must be valid";
+  } else if (logoUrl && isSvgLogo(logoUrl)) {
+    // Mirror of LogoImage's render-time check: SVG through the image
+    // optimizer is an XSS surface (dangerouslyAllowSVG off).
+    errors.logoUrl = "logoUrl must not be an SVG";
+  } else if (logoUrl && !isAllowedLogoUrl(logoUrl)) {
+    // isAllowedLogoUrl rejects non-https first — report the real cause so an
+    // http:// URL on an otherwise allowed host isn't blamed on the host.
     errors.logoUrl =
-      "logoUrl must be from an allowed image host (see next.config.ts remotePatterns) and not an SVG";
+      new URL(logoUrl).protocol !== "https:"
+        ? "Logo URL must use HTTPS"
+        : "logoUrl must be from an allowed image host (see next.config.ts remotePatterns)";
+  }
   if (!categoryId) errors.categoryId = "Category is required";
   if (!description || description.length < 20) errors.description = "Description is required";
   if (!DEAL_STATUSES.has(status)) errors.status = "Invalid status";
