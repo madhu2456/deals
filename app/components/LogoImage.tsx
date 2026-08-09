@@ -24,14 +24,18 @@ const REMOTE_PATTERNS = [
   "res.cloudinary.com",
   "*.imgix.net",
   "cdn.sanity.io",
-  "logo.clearbit.com",
   "madhudadi.in",
   "deals.madhudadi.in",
 ] as const;
 
 export function isAllowedLogoUrl(url: string): boolean {
   try {
-    const host = new URL(url).hostname;
+    const parsed = new URL(url);
+    // remotePatterns are https-only; an http:// (or protocol-less) URL on an
+    // allowlisted host would reach the optimizer and 400. Reject it here so
+    // it falls back to the raw <img> path (CSP img-src https: + upgrade).
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname;
     return REMOTE_PATTERNS.some((pattern) => {
       if (pattern.startsWith("**.")) {
         const domain = pattern.slice(3);

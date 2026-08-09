@@ -62,7 +62,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "*.imgix.net" },
       { protocol: "https", hostname: "cdn.sanity.io" },
-      { protocol: "https", hostname: "logo.clearbit.com" },
       { protocol: "https", hostname: "madhudadi.in" },
       { protocol: "https", hostname: "deals.madhudadi.in" },
     ],
