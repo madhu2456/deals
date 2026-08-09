@@ -254,24 +254,26 @@ compose_up() {
   cd "${APP_DIR}"
   echo "Building and starting containers..."
 
-  # Tear down previous stack + force-remove named container if stuck
-  docker compose down --remove-orphans 2>/dev/null || true
-  docker rm -f deals-app 2>/dev/null || true
-
+  # Near-zero downtime: do NOT `docker compose down` first — the running
+  # container keeps serving while the new image builds, then compose
+  # recreates it in place (--force-recreate). `--wait` holds the deploy
+  # until the service passes its healthcheck (compose healthcheck below).
+  # Fallback for a stuck/foreign container still holding the host port:
+  # stop it so compose can bind the port again (the compose-managed
+  # deals-app container is skipped — compose handles its own recreation).
   if command -v docker >/dev/null 2>&1; then
-    for id in $(docker ps -aq --filter "name=deals-app" 2>/dev/null || true); do
-      echo "  Removing leftover container: ${id}"
-      docker rm -f "${id}" >/dev/null 2>&1 || true
-    done
     for id in $(docker ps -q --filter "publish=${APP_PORT}" 2>/dev/null || true); do
-      echo "  Stopping container on host port ${APP_PORT}: ${id}"
+      if [ "$(docker inspect -f '{{.Name}}' "${id}" 2>/dev/null || true)" = "/deals-app" ]; then
+        continue
+      fi
+      echo "  Stopping stale container on host port ${APP_PORT}: ${id}"
       docker stop "${id}" >/dev/null 2>&1 || true
       docker rm "${id}" >/dev/null 2>&1 || true
     done
   fi
 
   docker compose pull 2>/dev/null || true
-  docker compose up -d --build --remove-orphans --force-recreate
+  docker compose up -d --build --remove-orphans --force-recreate --wait
 
   if [ -f .env ] && grep -q '^RUN_SEED=true' .env 2>/dev/null; then
     sleep 5

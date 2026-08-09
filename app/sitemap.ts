@@ -4,9 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/site";
 
 /**
- * Cached sitemap for reliable crawler fetches (Search Console "Couldn't fetch"
- * is often a timeout/transient failure on uncached force-dynamic responses).
- * Regenerates at most once per hour.
+ * Regenerated per request: `dynamic = "force-dynamic"` disables ISR, so the
+ * `revalidate` below is inert and every request re-queries the DB. Caching
+ * comes from the /sitemap.xml Cache-Control header in next.config.ts
+ * (`public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400`),
+ * which is what keeps crawler fetches reliable. Switching to real ISR
+ * (dropping force-dynamic) is a deliberate, separate decision.
  */
 export const revalidate = 3600;
 export const dynamic = "force-dynamic";

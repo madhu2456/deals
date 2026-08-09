@@ -73,6 +73,11 @@ COPY --from=builder /app/components.json ./components.json
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \
+  # Standalone server (node .next/standalone/server.js) serves .next/static
+  # and public relative to its own dir, so mirror them inside it
+  && mkdir -p /app/.next/standalone/.next \
+  && cp -r /app/.next/static /app/.next/standalone/.next/static \
+  && cp -r /app/public /app/.next/standalone/public \
   && mkdir -p /app/data \
   && chown -R nextjs:nodejs /app
 

@@ -29,9 +29,12 @@ elif [ "${RUN_SEED:-false}" = "true" ]; then
   echo "[deals] tsx missing — cannot seed"
 fi
 
-echo "[deals] Starting Next.js on :${PORT:-3000}"
-if [ -x ./node_modules/.bin/next ]; then
-  exec ./node_modules/.bin/next start -H 0.0.0.0 -p "${PORT:-3000}"
+# Standalone output: the generated server.js takes PORT/HOSTNAME from env
+# (Dockerfile sets PORT=3000 HOSTNAME=0.0.0.0; it does not parse CLI args).
+echo "[deals] Starting standalone Next.js server on :${PORT:-3000}"
+if [ -f .next/standalone/server.js ]; then
+  exec node .next/standalone/server.js
 else
-  exec node node_modules/next/dist/bin/next start -H 0.0.0.0 -p "${PORT:-3000}"
+  echo "[deals] ERROR: .next/standalone/server.js not found (build with output: standalone)" >&2
+  exit 1
 fi
