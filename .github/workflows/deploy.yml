@@ -91,6 +91,12 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      # Generate the Prisma client explicitly. postinstall normally covers this,
+      # but a cached/partial install or --ignore-scripts would leave
+      # @prisma/client without generated exports (TS2305 + TS7006 cascade in tsc).
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: JSON-LD + price-parser regression fixtures
         run: pnpm test:jsonld
 
