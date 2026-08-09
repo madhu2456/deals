@@ -32,14 +32,17 @@ import {
 // Runtime data from SQLite — do not prerender at Docker build time
 export const dynamic = "force-dynamic";
 
+// ~48 chars — keep absolute titles in the ~50–60 char SEO range
+const HOME_TITLE = `Verified Deals & Coupons | ${SITE_NAME}`;
+
 export const metadata: Metadata = {
   title: {
-    absolute: `${SITE_NAME} — Verified Deals, Coupons & Discounts for Everyone`,
+    absolute: HOME_TITLE,
   },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
-    title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
+    title: HOME_TITLE,
     description: SITE_DESCRIPTION,
     url: absoluteUrl("/"),
     type: "website",
@@ -76,7 +79,7 @@ export default async function HomePage() {
     <>
       <JsonLd
         data={webPageSchema({
-          title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
+          title: HOME_TITLE,
           description: SITE_DESCRIPTION,
           path: "/",
         })}

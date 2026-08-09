@@ -28,7 +28,7 @@ export default function PrivacyPage() {
               Privacy Policy
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Last updated: 27 July 2026
+              Last updated: 9 Aug 2026
             </p>
           </div>
         </div>
@@ -39,15 +39,16 @@ export default function PrivacyPage() {
             <p>
               When you submit a deal through our form, we collect the information you
               provide: the deal URL, title, description, category, discount details,
-              and your email address if you choose to provide one. We do not require
-              an account to browse deals.
+              and your email address. An email address is required for deal
+              submissions so we can follow up if needed. Your name is optional. We do
+              not require an account to browse deals.
             </p>
 
             <h2>2. How we use your information</h2>
             <p>
               We use submitted deal information solely to review and publish verified
-              deals on this directory. Your email address, if provided, may be used
-              to follow up about your submission. We never sell, rent, or share your
+              deals on this directory. Your email address is used to follow up about
+              your submission when necessary. We never sell, rent, or share your
               personal data with third parties.
             </p>
 

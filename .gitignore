@@ -57,6 +57,8 @@ next-env.d.ts
 /dev.db
 /dev.db-journal
 /data/
+/backups/
+*.pre-restore.*
 
 # IDE / OS
 .idea/

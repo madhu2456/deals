@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +25,23 @@ interface Category {
   name: string;
 }
 
+/** Public site key only — never the secret. Empty ⇒ widget omitted. */
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      reset: (widgetId?: string) => void;
+      remove: (widgetId: string) => void;
+      render: (
+        el: string | HTMLElement,
+        options: Record<string, unknown>
+      ) => string;
+    };
+  }
+}
+
 export function SubmitDealForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,12 +50,60 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
   const [success, setSuccess] = useState(false);
   const [timestamp] = useState(() => Date.now());
   const firstErrorRef = useRef<HTMLParagraphElement | null>(null);
+  const turnstileHostRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       firstErrorRef.current?.focus();
     }
   }, [errors]);
+
+  // Explicit render so we can reset the widget after failed submits
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileHostRef.current) return;
+
+    const tryRender = () => {
+      if (!window.turnstile || !turnstileHostRef.current) return;
+      if (turnstileWidgetIdRef.current) return;
+      turnstileWidgetIdRef.current = window.turnstile.render(
+        turnstileHostRef.current,
+        {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: "auto",
+          // Response field name matches server lookup
+          "response-field-name": "cf-turnstile-response",
+        }
+      );
+    };
+
+    tryRender();
+    // Script may load after mount
+    const id = window.setInterval(tryRender, 400);
+    const stop = window.setTimeout(() => window.clearInterval(id), 15_000);
+    return () => {
+      window.clearInterval(id);
+      window.clearTimeout(stop);
+      if (turnstileWidgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetIdRef.current);
+        } catch {
+          /* widget already gone */
+        }
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [success]);
+
+  function resetTurnstile() {
+    if (turnstileWidgetIdRef.current && window.turnstile) {
+      try {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
@@ -57,13 +123,16 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
       } else if ("errors" in result && result.errors) {
         setErrors(result.errors);
         toast.error("Please fix the highlighted fields");
+        resetTurnstile();
       } else if ("error" in result && result.error) {
         setErrors({});
         setFormError(result.error);
         toast.error(result.error);
+        resetTurnstile();
       }
     } catch {
       toast.error("Something went wrong. Please try again.");
+      resetTurnstile();
     } finally {
       setSubmitting(false);
     }
@@ -338,6 +407,8 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
             placeholder="you@example.com…"
             autoComplete="email"
             spellCheck={false}
+            required
+            aria-required="true"
             aria-invalid={!!errors.submittedByEmail}
             aria-describedby={
               errors.submittedByEmail ? "submittedByEmail-error" : undefined
@@ -356,6 +427,23 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
           )}
         </div>
       </div>
+
+      {TURNSTILE_SITE_KEY ? (
+        <div className="space-y-2">
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+            strategy="afterInteractive"
+          />
+          <div
+            ref={turnstileHostRef}
+            className="cf-turnstile min-h-[65px]"
+            data-sitekey={TURNSTILE_SITE_KEY}
+          />
+          <p className="text-xs text-muted-foreground">
+            Protected by Cloudflare Turnstile.
+          </p>
+        </div>
+      ) : null}
 
       <Button type="submit" size="lg" className="min-h-12 w-full" disabled={submitting}>
         {submitting ? (

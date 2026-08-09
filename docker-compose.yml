@@ -6,6 +6,14 @@
 #
 # Inside the container Next still listens on 3000; only the HOST maps to 3002.
 # Nginx deals.madhudadi.in → proxy_pass http://127.0.0.1:3002
+#
+# SQLite data: DATABASE_URL default file:/app/data/deals.db (volume deals_data).
+# Backups: scripts/backup-sqlite.sh + scripts/restore-sqlite.sh (see docs/ops/backup-restore.md).
+# Optional host cron (daily integrity-checked backup, 14-day retention):
+#   15 3 * * * cd /opt/deals && docker compose exec -T deals \
+#     sh -c 'DATABASE_URL=file:/app/data/deals.db /app/scripts/backup-sqlite.sh' \
+#     >>/var/log/deals-backup.log 2>&1
+# (Requires the scripts present in the image or a bind mount; adjust paths for your deploy.)
 
 services:
   deals:

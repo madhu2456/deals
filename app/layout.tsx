@@ -109,6 +109,9 @@ export const viewport: Viewport = {
   ],
 };
 
+/** Consent Mode v2 default-deny — must run in <head> before any GTM/tag loads. */
+const CONSENT_DEFAULT_SCRIPT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});gtag('set','ads_data_redaction',true);gtag('set','url_passthrough',true);`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -119,6 +122,12 @@ export default function RootLayout({
       lang="en-IN"
       className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Consent Mode default denied BEFORE GTM (portfolio Consent Mode pattern) */}
+        <script
+          dangerouslySetInnerHTML={{ __html: CONSENT_DEFAULT_SCRIPT }}
+        />
+      </head>
       <body className="flex min-h-dvh flex-col font-sans">
         <CookieConsentProvider>
           <GoogleTagManagerNoscript />

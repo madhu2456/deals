@@ -1,8 +1,10 @@
+import { createHash, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 const COOKIE_NAME = "admin-session";
+const DEFAULT_TTL_HOURS = 24;
 
 function getSecret() {
   const secret = process.env.ADMIN_SECRET;
@@ -21,16 +23,44 @@ function getCredentials() {
   return { username, password };
 }
 
+/**
+ * Constant-time string compare via SHA-256 digests so length differences
+ * do not short-circuit (timingSafeEqual requires equal-length buffers).
+ */
+function safeEqual(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a, "utf8").digest();
+  const hb = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(ha, hb);
+}
+
+/** JWT + cookie max-age hours from ADMIN_JWT_TTL_HOURS (default 24). */
+function getJwtTtlHours(): number {
+  const raw = process.env.ADMIN_JWT_TTL_HOURS;
+  if (raw === undefined || raw === "") return DEFAULT_TTL_HOURS;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.warn(
+      `[admin-auth] invalid ADMIN_JWT_TTL_HOURS="${raw}", using ${DEFAULT_TTL_HOURS}`,
+    );
+    return DEFAULT_TTL_HOURS;
+  }
+  // Cap at 30 days to avoid accidental multi-year sessions
+  return Math.min(n, 24 * 30);
+}
+
 export async function loginAdmin(username: string, password: string) {
   const creds = getCredentials();
-  if (username !== creds.username || password !== creds.password) {
+  const userOk = safeEqual(username, creds.username);
+  const passOk = safeEqual(password, creds.password);
+  if (!userOk || !passOk) {
     return { success: false, error: "Invalid credentials" };
   }
 
+  const ttlHours = getJwtTtlHours();
   const token = await new SignJWT({ role: "admin" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${ttlHours}h`)
     .sign(getSecret());
 
   const cookieStore = await cookies();
@@ -39,7 +69,7 @@ export async function loginAdmin(username: string, password: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: ttlHours * 60 * 60,
   });
 
   return { success: true };

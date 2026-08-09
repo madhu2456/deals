@@ -29,6 +29,7 @@ import {
 import {
   absoluteUrl,
   defaultOgImages,
+  SITE_NAME,
   SITE_NAME_SHORT,
 } from "@/lib/site";
 import { CopyCodeButton } from "./CopyCodeButton";
@@ -39,6 +40,22 @@ interface DealPageProps {
 }
 
 export const dynamic = "force-dynamic";
+
+/** Absolute title ≤ ~70 chars: drop brand+long template stacking. */
+function dealDocumentTitle(dealTitle: string): string {
+  const suffix = ` | ${SITE_NAME}`;
+  const maxCore = Math.max(24, 68 - suffix.length);
+  let core = dealTitle.trim();
+  if (core.length > maxCore) {
+    core =
+      core
+        .slice(0, maxCore - 1)
+        .replace(/\s+\S*$/, "")
+        .replace(/[|–—-]\s*$/, "")
+        .trimEnd() + "…";
+  }
+  return `${core}${suffix}`;
+}
 
 export async function generateMetadata({ params }: DealPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -55,15 +72,21 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
     rawDesc.length <= 155
       ? rawDesc
       : rawDesc.slice(0, 155).replace(/\s+\S*$/, "") + "…";
-  const title = `${deal.title} | ${deal.brandName} Deal`;
+  // absolute: avoid layout template appending another " | Deals by Madhu Dadi"
+  const title = dealDocumentTitle(deal.title);
+  // Social can include brand without the full site suffix stacking
+  const socialTitle =
+    deal.title.length + deal.brandName.length < 50
+      ? `${deal.title} · ${deal.brandName}`
+      : title;
   const path = `/deals/${deal.slug}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: path },
     openGraph: {
-      title,
+      title: socialTitle,
       description,
       url: absoluteUrl(path),
       type: "website",
@@ -73,7 +96,7 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: socialTitle,
       description,
       images: deal.logoUrl
         ? [{ url: deal.logoUrl, alt: deal.brandName }]

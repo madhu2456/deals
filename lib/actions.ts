@@ -50,10 +50,59 @@ const submitWindowMs = parsePositiveInt(
   "SUBMIT_WINDOW_MS"
 );
 
+/** Both keys required to enable Turnstile; otherwise honeypot+timing only. */
+const turnstileSecretKey = process.env.TURNSTILE_SECRET_KEY?.trim() || "";
+const turnstileSiteKey =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
+const turnstileEnabled = Boolean(turnstileSecretKey && turnstileSiteKey);
+/** Exactly one key set → half-config; production must fail closed (critic C1). */
+const turnstileMisconfigured =
+  Boolean(turnstileSecretKey) !== Boolean(turnstileSiteKey);
+
+if (turnstileMisconfigured) {
+  console.error(
+    "[turnstile] misconfigured: set BOTH TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY, or neither"
+  );
+}
+
 function isValidHttpUrl(value: string) {
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cloudflare Turnstile siteverify — fail closed when enabled.
+ * Never logs the secret or full token.
+ */
+async function verifyTurnstileToken(
+  token: string,
+  remoteIp: string
+): Promise<boolean> {
+  const body = new URLSearchParams();
+  body.set("secret", turnstileSecretKey);
+  body.set("response", token);
+  if (remoteIp && remoteIp !== "unknown") {
+    body.set("remoteip", remoteIp);
+  }
+
+  try {
+    const res = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+        // Bound network wait so a hung CF cannot stall the action forever
+        signal: AbortSignal.timeout(8_000),
+      }
+    );
+    if (!res.ok) return false;
+    const data = (await res.json()) as { success?: boolean };
+    return data.success === true;
   } catch {
     return false;
   }
@@ -75,11 +124,12 @@ function parseOptionalDate(raw: string): Date | null | false {
 }
 
 export async function submitDealAction(formData: FormData) {
-  // Entry-count guard first (cheap, pre-parse): a real form has < 20 fields.
+  // Entry-count guard first (cheap, pre-parse): a real form has < 20 fields
+  // (+ Turnstile response when enabled).
   const entries = formData.entries();
   let fieldCount = 0;
   while (!entries.next().done) fieldCount += 1;
-  if (fieldCount > 20) {
+  if (fieldCount > 24) {
     return { success: false as const, error: GENERIC };
   }
 
@@ -144,7 +194,8 @@ export async function submitDealAction(formData: FormData) {
     return { success: false as const, error: GENERIC };
   }
 
-  // Rate limit must precede ANY DB read (incl. the category findFirst below).
+  // Rate limit must precede ANY DB read (incl. the category findFirst below)
+  // and external Turnstile verification.
   // NODE_ENV guard: dev/test skips limiting — direct connections share the
   // "unknown" bucket and would self-lockout a dev.
   const ip = getClientIp(await headers());
@@ -160,6 +211,29 @@ export async function submitDealAction(formData: FormData) {
       success: false as const,
       error: "Too many submissions from your IP. Please try again later.",
     };
+  }
+
+  // Turnstile (env-gated):
+  // - both keys set → require + verify token (fail closed)
+  // - neither set → honeypot+timing only
+  // - exactly one set (half-config) → reject in production (critic C1)
+  if (turnstileMisconfigured && process.env.NODE_ENV === "production") {
+    console.error(
+      "[turnstile] rejecting submit: half-configured (only one of SECRET/SITE key is set)"
+    );
+    return { success: false as const, error: GENERIC };
+  }
+  if (turnstileEnabled) {
+    const token = String(
+      raw["cf-turnstile-response"] || raw.turnstileToken || ""
+    ).trim();
+    if (!token) {
+      return { success: false as const, error: GENERIC };
+    }
+    const ok = await verifyTurnstileToken(token, ip);
+    if (!ok) {
+      return { success: false as const, error: GENERIC };
+    }
   }
 
   // Best-effort dedupe (TOCTOU accepted: two concurrent identical submissions

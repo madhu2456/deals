@@ -27,6 +27,17 @@ const CookieConsentContext = createContext<CookieConsentContextValue | null>(
   null,
 );
 
+declare global {
+  interface Window {
+    gtag?: (
+      command: "consent" | "set" | "config" | "event" | "js",
+      ...args: unknown[]
+    ) => void;
+    // Align with lib/analytics.ts Window.dataLayer declaration
+    dataLayer?: Record<string, unknown>[];
+  }
+}
+
 function readStoredConsent(): CookieConsentValue {
   if (typeof window === "undefined") return null;
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -41,6 +52,37 @@ function writeConsent(value: "accepted" | "declined") {
   );
 }
 
+/**
+ * Consent Mode v2 update. Ads signals stay denied (site does not use ad cookies);
+ * analytics_storage follows the user's explicit choice.
+ */
+function updateGtagConsent(value: "accepted" | "declined") {
+  if (typeof window === "undefined") return;
+  const gtag = window.gtag;
+  if (typeof gtag !== "function") return;
+
+  if (value === "accepted") {
+    gtag("consent", "update", {
+      analytics_storage: "granted",
+      // No advertising cookies on this site — keep ad signals denied
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      functionality_storage: "granted",
+      security_storage: "granted",
+    });
+  } else {
+    gtag("consent", "update", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      functionality_storage: "granted",
+      security_storage: "granted",
+    });
+  }
+}
+
 export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const [consent, setConsent] = useState<CookieConsentValue>(() =>
     readStoredConsent(),
@@ -48,12 +90,22 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback(() => {
     writeConsent("accepted");
+    updateGtagConsent("accepted");
     setConsent("accepted");
   }, []);
 
   const decline = useCallback(() => {
     writeConsent("declined");
+    updateGtagConsent("declined");
     setConsent("declined");
+  }, []);
+
+  // Apply stored choice on mount (returning visitors) so GTM sees the update
+  useEffect(() => {
+    const stored = readStoredConsent();
+    if (stored === "accepted" || stored === "declined") {
+      updateGtagConsent(stored);
+    }
   }, []);
 
   // Multi-tab sync via storage event
@@ -61,6 +113,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY) return;
       if (e.newValue === "accepted" || e.newValue === "declined") {
+        updateGtagConsent(e.newValue);
         setConsent(e.newValue);
       } else if (e.newValue === null) {
         setConsent(null);

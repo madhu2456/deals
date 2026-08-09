@@ -47,7 +47,7 @@ FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends openssl ca-certificates sqlite3 \
   && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
@@ -70,9 +70,12 @@ COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/app ./app
 COPY --from=builder /app/components ./components
 COPY --from=builder /app/components.json ./components.json
+# Ops scripts (backup/restore + verify helpers) for exec/cron inside the image
+COPY --from=builder /app/scripts ./scripts
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \
+  && chmod +x /app/scripts/*.sh 2>/dev/null || true \
   # Standalone server (node .next/standalone/server.js) serves .next/static
   # and public relative to its own dir, so mirror them inside it
   && mkdir -p /app/.next/standalone/.next \
