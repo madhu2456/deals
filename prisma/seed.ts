@@ -9,9 +9,9 @@ type CuratedDeal = {
   brandName: string;
   brandUrl: string;
   dealUrl: string;
-  /** Logo image URL — covers the LogoImage fallback matrix (see the three
-   *  deals with logoUrl below: allowlisted PNG → optimizer, out-of-pattern
-   *  PNG → raw <img>, SVG → raw <img>). */
+  /** Logo image URL. Prefer null when no verified merchant asset is available.
+   *  Do not use demo hosts (res.cloudinary.com/demo, kernel.org tux, generic
+   *  linux icons) — DealCard already handles missing logoUrl without layout break. */
   logoUrl?: string | null;
   discountType: string;
   discountValue: string;
@@ -35,8 +35,8 @@ const CURATED_DEALS: CuratedDeal[] = [
     discountType: "FIXED",
     discountValue: "$5/mo",
     discountedPrice: "$5/mo",
-    // Allowlisted host (res.cloudinary.com) — served via the next/image optimizer
-    logoUrl: "https://res.cloudinary.com/demo/image/upload/sample.png",
+    // No verified brand logo asset in-repo — null avoids Cloudinary demo placeholders
+    logoUrl: null,
     description:
       "Get OpenCode, an AI coding agent built for the terminal and your editor, starting at $5 per month via this exclusive link. Use the link to claim the offer, then complete signup on OpenCode. Pricing and eligibility are confirmed on the merchant site at checkout.",
     categorySlug: "ai-and-machine-learning",
@@ -56,8 +56,8 @@ const CURATED_DEALS: CuratedDeal[] = [
       "PDF2Go is an online PDF toolkit for editing, converting, merging, and compressing files — free Premium access when you sign up with a school email. In most cases PDF2Go verifies your institution automatically and activates free premium; if not, contact their support. Global offer · Free · Web. Claim via our referral link, then complete signup on PDF2Go.",
     categorySlug: "productivity",
     isFeatured: true,
-    // Out-of-pattern host (kernel.org) — LogoImage falls back to raw <img>
-    logoUrl: "https://www.kernel.org/theme/images/logos/tux.png",
+    // No verified PDF2Go brand asset — null (not kernel.org Tux demo)
+    logoUrl: null,
     notes:
       "Student email required. Referral: https://www.pdf2go.com/?ref_code=d62be546",
   },
@@ -75,8 +75,8 @@ const CURATED_DEALS: CuratedDeal[] = [
       "University and higher-education students and faculty get four years of free Down Dog access — yoga, fitness, and wellness content at no cost if you qualify. You need a school-issued email from an accredited university or higher education institution. If your school uses .edu addresses, you typically receive free four-year access automatically on signup. Otherwise, apply for free access for your university on Down Dog’s universities page; once accepted, your school domain is added and anyone from your school can sign up for extended free access. Claim via the official universities page, then complete signup on Down Dog. Eligibility and terms are confirmed by Down Dog.",
     categorySlug: "health-and-wellness",
     isFeatured: true,
-    // SVG — never sent to the optimizer; LogoImage renders it as raw <img>
-    logoUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg",
+    // No verified Down Dog brand asset — null (not generic linux SVG)
+    logoUrl: null,
     notes:
       "School-issued email required. Official: https://www.downdogapp.com/universities",
   },
