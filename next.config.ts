@@ -2,13 +2,17 @@ import type { NextConfig } from "next";
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://www.googletagmanager.com",
+  // Turnstile widget (when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set) loads from
+  // challenges.cloudflare.com — allow script + frame so enabling keys does not break CSP.
+  "script-src 'self' https://www.googletagmanager.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   // Merchant logos and deal images come from external CDNs — restrict to HTTPS.
   "img-src 'self' data: https:",
   "font-src 'self'",
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com",
-  "frame-src 'self' https://www.googletagmanager.com",
+  // Turnstile widget POSTs challenges to challenges.cloudflare.com — allow
+  // connect-src so enabling NEXT_PUBLIC_TURNSTILE_SITE_KEY does not break CSP.
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://challenges.cloudflare.com",
+  "frame-src 'self' https://www.googletagmanager.com https://challenges.cloudflare.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -55,7 +55,8 @@
   --card-foreground: #1e1b4b;
   --popover: #ffffff;
   --popover-foreground: #1e1b4b;
-  --primary: #6366f1;
+  /* Indigo-600: white text ≥4.5:1 AA (~6.3:1). Indigo-500 #6366f1 was ~4.46:1. */
+  --primary: #4f46e5;
   --primary-foreground: #ffffff;
   --secondary: #e0e7ff;
   --secondary-foreground: #1e1b4b;
@@ -66,21 +67,21 @@
   --destructive: #dc2626;
   --border: #e0e7ff;
   --input: #e0e7ff;
-  --ring: #6366f1;
+  --ring: #4f46e5;
   --radius: 0.75rem;
-  --chart-1: #6366f1;
+  --chart-1: #4f46e5;
   --chart-2: #818cf8;
   --chart-3: #059669;
   --chart-4: #f59e0b;
   --chart-5: #ec4899;
   --sidebar: #ffffff;
   --sidebar-foreground: #1e1b4b;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #4f46e5;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e0e7ff;
   --sidebar-accent-foreground: #1e1b4b;
   --sidebar-border: #e0e7ff;
-  --sidebar-ring: #6366f1;
+  --sidebar-ring: #4f46e5;
 }
 
 .dark {

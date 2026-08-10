@@ -67,7 +67,7 @@ export default function AboutPage() {
             <h2>Built by {PUBLISHER.name}</h2>
             <p>
               <a
-                href={PUBLISHER.url}
+                href={PUBLISHER.profile}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary underline-offset-2 hover:underline"

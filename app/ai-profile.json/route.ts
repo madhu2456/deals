@@ -44,7 +44,7 @@ export async function GET() {
           "@type": "Person",
           "@id": `${PUBLISHER.url}/#person`,
           name: PUBLISHER.name,
-          url: PUBLISHER.url,
+          url: PUBLISHER.profile,
         },
       },
       {

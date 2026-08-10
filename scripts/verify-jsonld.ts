@@ -24,6 +24,11 @@ assert(
   "org parentOrganization"
 );
 assert(org.founder["@id"] === "https://madhudadi.in/#person", "org founder @id");
+assert(
+  org.founder.url === "https://madhudadi.in/profile/" ||
+    org.founder.url === PUBLISHER.profile,
+  "org founder url is profile deep link"
+);
 assert(!("sameAs" in org), "org has no sameAs (Fix #8)");
 
 // ── Website schema ──

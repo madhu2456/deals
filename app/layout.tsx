@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   keywords: SITE_KEYWORDS,
   applicationName: SITE_NAME,
-  authors: [{ name: "Madhu Dadi", url: "https://madhudadi.in" }],
+  authors: [{ name: "Madhu Dadi", url: "https://madhudadi.in/profile/" }],
   creator: "Madhu Dadi",
   publisher: SITE_NAME,
   category: "shopping",

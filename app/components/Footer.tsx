@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
-import { SITE_NAME, SITE_NAME_SHORT } from "@/lib/site";
+import { PUBLISHER, SITE_NAME, SITE_NAME_SHORT } from "@/lib/site";
 
 const linkClass =
   "text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded";
@@ -87,7 +87,7 @@ export function Footer() {
             <ul className="mt-3 space-y-2.5 text-sm">
               <li>
                 <a
-                  href="https://madhudadi.in"
+                  href={PUBLISHER.profile}
                   target="_blank"
                   rel="noopener noreferrer me"
                   className={externalLinkClass}

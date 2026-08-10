@@ -89,6 +89,8 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
       title: socialTitle,
       description,
       url: absoluteUrl(path),
+      // Next Metadata OpenGraphType has no "product"; Product JSON-LD carries commerce type.
+      // Prefer merchant logo for social previews when present (matches Product.image).
       type: "website",
       images: deal.logoUrl
         ? [{ url: deal.logoUrl, alt: deal.brandName }]

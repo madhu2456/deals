@@ -54,7 +54,10 @@ export const SITE_KEYWORDS = [
 /** Creator / publisher entity for E-E-A-T */
 export const PUBLISHER = {
   name: "Madhu Dadi",
+  /** Hub apex — parent org / entity @id fragments. */
   url: "https://madhudadi.in",
+  /** Person deep link for founder `url`, footer, and about. */
+  profile: "https://madhudadi.in/profile/",
   blog: "https://madhudadi.in/blog",
   udemyEnroller: "https://udemyenroller.madhudadi.in",
 };

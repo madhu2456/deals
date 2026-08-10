@@ -39,9 +39,10 @@ export function organizationSchema() {
     description: SITE_DESCRIPTION,
     founder: {
       "@type": "Person",
+      // Stable hub fragment for entity identity; public profile is the deep link.
       "@id": `${PUBLISHER.url}/#person`,
       name: PUBLISHER.name,
-      url: PUBLISHER.url,
+      url: PUBLISHER.profile,
     },
     parentOrganization: { "@id": `${PUBLISHER.url}/#organization` },
   };

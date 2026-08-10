@@ -28,7 +28,7 @@ export default function PrivacyPage() {
               Privacy Policy
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Last updated: 9 Aug 2026
+              Last updated: 10 Aug 2026
             </p>
           </div>
         </div>
@@ -74,7 +74,19 @@ export default function PrivacyPage() {
               by contacting us.
             </p>
 
-            <h2>6. Contact</h2>
+            <h2>6. India DPDP notice (Data Fiduciary)</h2>
+            <p>
+              Where the Digital Personal Data Protection Act, 2023 (DPDP Act) of India
+              applies, the operator of {SITE_NAME} acts as a{" "}
+              <strong>Data Fiduciary</strong> for personal data you provide (for
+              example, an email address on a deal submission). We process that data
+              only for the purposes described in this policy, take reasonable security
+              safeguards, and respond to lawful requests to access or erase personal
+              data you have submitted. Contact us using the address below to exercise
+              applicable rights or raise a privacy concern.
+            </p>
+
+            <h2>7. Contact</h2>
             <p>
               For privacy-related inquiries, contact{" "}
               <a
