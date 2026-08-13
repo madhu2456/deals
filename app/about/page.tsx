@@ -46,8 +46,10 @@ export default function AboutPage() {
             <p>
               Every deal is reviewed by a human before it appears in the
               directory. Community submissions start as pending and go live only
-              after approval. We check that offer URLs work, terms are clear,
-              and descriptions are accurate — so you can claim deals confidently.
+              after approval. Deals are reviewed for clarity and terms; offers
+              with a fixed expiry are checked periodically; some offers have no
+              fixed expiry. Always confirm the final terms on the merchant’s
+              site before claiming.
             </p>
 
             <h2>Affiliate Disclosure</h2>

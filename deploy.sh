@@ -104,6 +104,8 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 ADMIN_SECRET="${ADMIN_SECRET}"
 NEXT_PUBLIC_SITE_URL="https://${DOMAIN}"
 APP_PORT=${APP_PORT}
+# First-time provisioning only: flipped to false after the first container
+# start (see flip_seed_flag). Routine --update deploys never re-enable seeding.
 RUN_SEED=true
 NODE_ENV=production
 EOF
@@ -120,6 +122,21 @@ EOF
     else
       echo "APP_PORT=${APP_PORT}" >>"${APP_DIR}/.env"
     fi
+  fi
+}
+
+# Seed only on first-time provisioning. The container bakes RUN_SEED from
+# .env at `docker compose up` (container-create) time, so flipping the host
+# .env right after `up` does not affect the just-started container — it seeds
+# once — but every later recreate/restart via compose sees RUN_SEED=false and
+# skips seeding. The flip therefore never re-enables seeding on routine
+# --update deploys (which never write RUN_SEED=true; ensure_env only writes it
+# when .env is created from scratch).
+flip_seed_flag() {
+  local env_file="${1:-${APP_DIR}/.env}"
+  if [ -f "${env_file}" ] && grep -q '^RUN_SEED=true' "${env_file}" 2>/dev/null; then
+    sed -i 's/^RUN_SEED=true/RUN_SEED=false/' "${env_file}" || true
+    echo "  RUN_SEED set to false for future restarts."
   fi
 }
 
@@ -275,11 +292,10 @@ compose_up() {
   docker compose pull 2>/dev/null || true
   docker compose up -d --build --remove-orphans --force-recreate --wait
 
-  if [ -f .env ] && grep -q '^RUN_SEED=true' .env 2>/dev/null; then
-    sleep 5
-    sed -i 's/^RUN_SEED=true/RUN_SEED=false/' .env || true
-    echo "  RUN_SEED set to false for future restarts."
-  fi
+  # Flip the first-time seed flag (see flip_seed_flag): no sleep needed —
+  # compose baked RUN_SEED into the container at create time, so the flip only
+  # affects future recreates, and this update path never sets RUN_SEED=true.
+  flip_seed_flag
 
   echo "Container status:"
   docker compose ps
@@ -360,11 +376,9 @@ echo "6. Building and starting app (as ${DEPLOY_USER})..."
 # Run compose as deploy user so containers are owned correctly
 if [ "$(id -u)" -eq 0 ]; then
   su - "${DEPLOY_USER}" -c "cd '${APP_DIR}' && docker compose up -d --build --remove-orphans"
-  # Flip seed flag if needed
-  if [ -f "${APP_DIR}/.env" ] && grep -q '^RUN_SEED=true' "${APP_DIR}/.env"; then
-    sleep 5
-    sed -i 's/^RUN_SEED=true/RUN_SEED=false/' "${APP_DIR}/.env" || true
-  fi
+  # Flip first-time seed flag (see flip_seed_flag): the container baked
+  # RUN_SEED=true at create time and seeds once; future restarts skip seeding.
+  flip_seed_flag
 else
   compose_up
 fi

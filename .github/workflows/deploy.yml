@@ -60,16 +60,20 @@ jobs:
           fi
           echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
 
-      # ── Test gate: JSON-LD/price fixtures + type safety, BEFORE deploy ──
+      # ── Test gate: six fast gate steps BEFORE deploy ──
       # pnpm is pinned via the packageManager field (pnpm@9.15.9) using
       # pnpm/action-setup; the committed pnpm-lock.yaml enables a frozen install.
       # NOTE: `pnpm test:all` is NOT run here — it chains verify-content and
       # verify-discovery, which exercise app routes / Next modules that can pull
-      # in DB- or env-dependent code, and this runner has no DB service. CI runs
-      # only the fast, DB-free gate: test:jsonld (price-parser regression
-      # fixtures) + test:rate-limit (pure libs only: lib/ip, lib/deal-url,
-      # lib/rate-limit — no DB/env imports, so it is gate-safe) + test:format
-      # (pure libs only: lib/format, lib/site — likewise gate-safe) + tsc --noEmit.
+      # in DB- or env-dependent code. CI runs the gate instead:
+      #   1. test:jsonld           — JSON-LD + price-parser regression fixtures
+      #   2. test:format           — pure libs only (lib/format, lib/site), gate-safe
+      #   3. test:rate-limit       — pure libs only (lib/ip, lib/deal-url, lib/rate-limit), gate-safe
+      #   4. test:offer-checker    — pure checker functions with mocked fetch (no network)
+      #   5. test:seed-idempotency — self-contained temp DB: copies the repo dev DB
+      #                              when present, else provisions a fresh one via
+      #                              `prisma migrate deploy`; never touches a live DB
+      #   6. tsc --noEmit          — type safety
       # Tests must pass before anything deploys.
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -109,6 +113,18 @@ jobs:
       # so it fits the gate's exclusion rationale for test:all.
       - name: Rate-limit + IP trust + URL normalization regression
         run: pnpm test:rate-limit
+
+      # DB-free: scripts/check-offer-validity.ts imports Prisma lazily inside
+      # main(); the test imports only the pure checker functions with a mocked
+      # fetch (no network) plus source-copy assertions for F-DEAL-001.
+      - name: Offer-validity checker unit tests + copy consistency
+        run: pnpm test:offer-checker
+
+      # Self-contained: copies the repo dev DB when present, else provisions a
+      # fresh temp DB via `prisma migrate deploy` (never touches a live DB),
+      # then proves seed re-runs cannot clobber existing rows (F-DEAL-010).
+      - name: Seed idempotency regression
+        run: pnpm test:seed-idempotency
 
       - name: Type safety
         run: npx tsc --noEmit

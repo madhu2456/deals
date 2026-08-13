@@ -3,7 +3,7 @@ import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { generateUniqueSlug } from "@/lib/slug";
 
 type CuratedDeal = {
-  /** Stable URL slug — keep fixed so re-seeds upsert instead of duplicating */
+  /** Stable URL slug — keep fixed so re-seeds skip instead of duplicating */
   slug: string;
   title: string;
   brandName: string;
@@ -180,28 +180,25 @@ async function main() {
     const slug = sample.slug;
     const shortDescription = sample.description.slice(0, 140);
 
-    await prisma.deal.upsert({
+    // Create-if-missing ONLY. Seeding must never touch existing rows: the old
+    // upsert update-branch re-stamped status=APPROVED + approvedAt=new Date()
+    // and overwrote title/description/notes/couponCode on every deploy —
+    // re-approving admin-REJECTED/EXPIRED deals and re-stamping JSON-LD
+    // validFrom/dateModified site-wide (F-DEAL-010). Admin edits and lifecycle
+    // status are the source of truth for live rows; the seed only backfills
+    // slugs that have never been inserted.
+    const existing = await prisma.deal.findUnique({
       where: { slug },
-      update: {
-        title: sample.title,
-        brandName: sample.brandName,
-        brandUrl: sample.brandUrl,
-        logoUrl: sample.logoUrl ?? null,
-        dealUrl: sample.dealUrl,
-        discountType: sample.discountType,
-        discountValue: sample.discountValue,
-        originalPrice: sample.originalPrice ?? null,
-        discountedPrice: sample.discountedPrice ?? null,
-        description: sample.description,
-        shortDescription,
-        categoryId,
-        isFeatured: sample.isFeatured ?? false,
-        couponCode: sample.couponCode ?? null,
-        notes: sample.notes ?? null,
-        status: "APPROVED",
-        approvedAt: new Date(),
-      },
-      create: {
+      select: { id: true },
+    });
+
+    if (existing) {
+      console.log(`  = ${sample.title} → /deals/${slug} (exists — untouched)`);
+      continue;
+    }
+
+    await prisma.deal.create({
+      data: {
         title: sample.title,
         slug,
         brandName: sample.brandName,

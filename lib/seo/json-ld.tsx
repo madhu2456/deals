@@ -360,7 +360,7 @@ export const HOME_FAQS = [
   {
     question: "Are the coupon codes and deals verified?",
     answer:
-      "Yes. Community submissions start as pending and only go live after review. Featured and approved deals are checked for a working offer URL, clear terms, and a sensible description so shoppers can claim them confidently.",
+      "Deals are reviewed for clarity and terms; offers with a fixed expiry are checked periodically; some offers have no fixed expiry. Community submissions start as pending and only go live after review, so shoppers can claim them confidently.",
   },
   {
     question: "How do I claim a deal or use a coupon code?",

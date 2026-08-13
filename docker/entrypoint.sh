@@ -21,12 +21,18 @@ fi
 
 "$PRISMA_BIN" migrate deploy
 
-# Always ensure categories exist (idempotent upserts) — critical for SEO category pages
-if [ -x ./node_modules/.bin/tsx ]; then
-  echo "[deals] Ensuring categories are seeded..."
-  ./node_modules/.bin/tsx prisma/seed.ts || echo "[deals] Seed failed (non-fatal)"
-elif [ "${RUN_SEED:-false}" = "true" ]; then
-  echo "[deals] tsx missing — cannot seed"
+# Seed ONLY on explicit first-time provisioning (RUN_SEED=true). deploy.sh
+# bootstrap writes RUN_SEED=true when .env is first created and flips it to
+# false after the first container start, so routine --update deploys never
+# re-seed. Even if a seed does run, prisma/seed.ts is create-if-missing only
+# (F-DEAL-010) — it can never re-stamp or overwrite existing rows.
+if [ "${RUN_SEED:-false}" = "true" ]; then
+  if [ -x ./node_modules/.bin/tsx ]; then
+    echo "[deals] Seeding categories + curated deals (RUN_SEED=true)..."
+    ./node_modules/.bin/tsx prisma/seed.ts || echo "[deals] Seed failed (non-fatal)"
+  else
+    echo "[deals] RUN_SEED=true but tsx not installed — skipping seed"
+  fi
 fi
 
 # Standalone output: the generated server.js takes PORT/HOSTNAME from env
