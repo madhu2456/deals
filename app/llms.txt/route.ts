@@ -72,7 +72,7 @@ ${dealLines || "- (none yet)"}
 
 ## How it works
 1. Deals are submitted by the community or added by editors.
-2. Pending deals are moderated for validity and clarity.
+2. Pending deals are reviewed for clarity and terms; offers with a fixed expiry are checked periodically; some offers have no fixed expiry.
 3. Approved deals appear publicly with brand, discount, optional coupon code, and claim URL.
 4. Expired deals are hidden from public listings when an expiry date has passed.
 

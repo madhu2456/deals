@@ -119,21 +119,54 @@ async function main(): Promise<void> {
   assertEqual(isExpired(undefined, now), false, "undefined expiry → not expired");
   assertEqual(isExpired("not-a-date", now), false, "garbage date string → not expired");
 
-  // ── Copy consistency (F-DEAL-001 D012-A): no unbacked URL-verification claim ──
+  // ── Copy consistency (F-DEAL-001 D012-A + F-DEAL-005 sweep): no unbacked
+  // URL-verification claim anywhere in the public surfaces ──
   const repoRoot = join(__dirname, "..");
   const jsonld = readFileSync(join(repoRoot, "lib", "seo", "json-ld.tsx"), "utf8");
   const about = readFileSync(join(repoRoot, "app", "about", "page.tsx"), "utf8");
+  const llms = readFileSync(join(repoRoot, "app", "llms.txt", "route.ts"), "utf8");
+  const aiProfile = readFileSync(join(repoRoot, "app", "ai-profile.json", "route.ts"), "utf8");
+  const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+  const siteLib = readFileSync(join(repoRoot, "lib", "site.ts"), "utf8");
+  const hero = readFileSync(join(repoRoot, "app", "components", "Hero.tsx"), "utf8");
+  const footer = readFileSync(join(repoRoot, "app", "components", "Footer.tsx"), "utf8");
 
-  assert(
-    !/checked for a working offer URL/i.test(jsonld),
-    "HOME_FAQS no longer claims URL verification"
-  );
-  assert(
-    !/checked for a working offer URL/i.test(about),
-    "About page no longer claims URL verification"
-  );
+  // The banned pattern: claiming offers are checked for a working URL.
+  const surfaces: Array<[string, string]> = [
+    ["lib/seo/json-ld.tsx", jsonld],
+    ["app/about/page.tsx", about],
+    ["app/llms.txt/route.ts", llms],
+    ["app/ai-profile.json/route.ts", aiProfile],
+    ["README.md", readme],
+    ["lib/site.ts", siteLib],
+    ["app/components/Hero.tsx", hero],
+    ["app/components/Footer.tsx", footer],
+  ];
+  for (const [name, src] of surfaces) {
+    assert(
+      !/checked for a working offer URL/i.test(src),
+      `${name} no longer claims URL verification`
+    );
+    assert(
+      !/verified working offer/i.test(src) && !/verified working URL/i.test(src),
+      `${name} has no "verified working offer/URL" claim`
+    );
+    assert(
+      !/moderated for validity/i.test(src) && !/checked for validity/i.test(src),
+      `${name} has no validity-check claim`
+    );
+  }
+
   assert(/reviewed for clarity and terms/i.test(jsonld), "HOME_FAQS has new review wording");
   assert(/reviewed for clarity and terms/i.test(about), "About page has new review wording");
+  assert(
+    /reviewed for clarity and terms/i.test(llms),
+    "llms.txt uses the honest review wording"
+  );
+  assert(
+    /Human-reviewed directory of software, SaaS, and product discounts/i.test(aiProfile),
+    "ai-profile.json describes human review, not URL verification"
+  );
   assert(
     /\bsome\s+offers\s+have\s+no\s+fixed\s+expiry/i.test(jsonld) &&
       /\bsome\s+offers\s+have\s+no\s+fixed\s+expiry/i.test(about),

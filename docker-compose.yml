@@ -9,11 +9,14 @@
 #
 # SQLite data: DATABASE_URL default file:/app/data/deals.db (volume deals_data).
 # Backups: scripts/backup-sqlite.sh + scripts/restore-sqlite.sh (see docs/ops/backup-restore.md).
-# Optional host cron (daily integrity-checked backup, 14-day retention):
+# Host cron: `./deploy.sh --install-backup-cron` installs idempotent daily
+# entries for backup-sqlite.sh (03:15 UTC) + verify_backup_freshness.sh
+# (03:45 UTC). It auto-detects this named-volume mount and installs the
+# container (exec) variant:
 #   15 3 * * * cd /opt/deals && docker compose exec -T deals \
-#     sh -c 'DATABASE_URL=file:/app/data/deals.db /app/scripts/backup-sqlite.sh' \
+#     sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' \
 #     >>/var/log/deals-backup.log 2>&1
-# (Requires the scripts present in the image or a bind mount; adjust paths for your deploy.)
+# Bind-mount deployments (DB on a host path) get the plain host entries.
 
 services:
   deals:

@@ -17,8 +17,12 @@
  *    REJECTED and EXPIRED rows are admin-lifecycle states and are left alone.
  *
  * Intended host cron (deploy-time ops — deliberately NOT wired into the repo):
- *   0 4 * * *  cd /opt/deals && docker compose exec -T deals-app pnpm check:offers
- * (daily 04:00 IST; confirm the compose service name — see docker-compose.yml)
+ *   0 4 * * * cd /opt/deals && docker compose exec -T deals sh -c 'cd /app && ./node_modules/.bin/tsx scripts/check-offer-validity.ts' >>/var/log/deals-offer-check.log 2>&1
+ * (daily 04:00 UTC; compose service name is "deals" — see docker-compose.yml.
+ *  Output is cron-compatible: JSON report on stdout, exit 0 = nothing to do,
+ *  exit 1 = findings (expired deals and/or broken offer URLs needing admin
+ *  review). The redirect keeps the report in /var/log/deals-offer-check.log
+ *  and cron sees the non-zero exit (default MAILTO alert).)
  *
  * Run: pnpm check:offers
  */

@@ -124,6 +124,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <TableCell>
                       <div className="font-medium text-foreground">{deal.title}</div>
                       <div className="text-sm text-muted-foreground">{deal.brandName}</div>
+                      {deal.brokenReportCount > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="mt-1 border-destructive/40 text-destructive"
+                          title={
+                            deal.brokenReportedAt
+                              ? `First reported ${formatDate(deal.brokenReportedAt)}`
+                              : undefined
+                          }
+                        >
+                          broken ×{deal.brokenReportCount}
+                        </Badge>
+                      )}
                       {deal.submittedByEmail && (
                         <div className="text-xs text-muted-foreground">
                           by {deal.submittedByName || "Anonymous"} ({deal.submittedByEmail})

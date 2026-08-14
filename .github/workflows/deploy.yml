@@ -60,7 +60,7 @@ jobs:
           fi
           echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
 
-      # ── Test gate: six fast gate steps BEFORE deploy ──
+      # ── Test gate: ten fast gate steps BEFORE deploy ──
       # pnpm is pinned via the packageManager field (pnpm@9.15.9) using
       # pnpm/action-setup; the committed pnpm-lock.yaml enables a frozen install.
       # NOTE: `pnpm test:all` is NOT run here — it chains verify-content and
@@ -73,7 +73,13 @@ jobs:
       #   5. test:seed-idempotency — self-contained temp DB: copies the repo dev DB
       #                              when present, else provisions a fresh one via
       #                              `prisma migrate deploy`; never touches a live DB
-      #   6. tsc --noEmit          — type safety
+      #   6. test:sitemap-stability — static lastmod guard + temp-DB double-seed
+      #   7. test:approved-at       — temp-DB admin approvedAt behavior (F-DEAL-012;
+      #                              seeds the fresh DB when no dev.db is present)
+      #   8. test:report-endpoint   — temp-DB report endpoint units (F-DEAL-006;
+      #                              seeds the fresh DB when no dev.db is present)
+      #   9. test:turnstile-config  — key parity + widget code path (F-DEAL-003)
+      #  10. tsc --noEmit           — type safety
       # Tests must pass before anything deploys.
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -125,6 +131,31 @@ jobs:
       # then proves seed re-runs cannot clobber existing rows (F-DEAL-010).
       - name: Seed idempotency regression
         run: pnpm test:seed-idempotency
+
+      # Self-contained (same temp-DB strategy as seed-idempotency): proves two
+      # consecutive seeds leave sitemap lastmod derivation unchanged and that
+      # app/sitemap.ts carries no deploy-time restamp (F-DEAL-002).
+      - name: Sitemap lastmod stability regression
+        run: pnpm test:sitemap-stability
+
+      # Self-contained temp DB (seeds the fresh DB when no dev.db is present —
+      # prisma/*.db is gitignored, so a clean CI checkout exercises this path):
+      # admin-created APPROVED deals carry approvedAt (getLatestDeals + JSON-LD
+      # validFrom), PENDING stays null (F-DEAL-012).
+      - name: Admin approvedAt regression
+        run: pnpm test:approved-at
+
+      # Self-contained temp DB (same fresh-DB seeding): report endpoint units —
+      # valid/invalid id, rate limit (5/hr/IP), honeypot, cross-origin → 403
+      # origin guard, counter storage (F-DEAL-006).
+      - name: Broken-deal report endpoint unit tests
+        run: pnpm test:report-endpoint
+
+      # DB-free static guard: Turnstile key parity (both or neither) + widget
+      # code path + .env.example documentation (F-DEAL-003). Reads key
+      # presence only — never values.
+      - name: Turnstile config parity + widget code path
+        run: pnpm test:turnstile-config
 
       - name: Type safety
         run: npx tsc --noEmit

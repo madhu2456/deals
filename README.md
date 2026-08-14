@@ -156,6 +156,21 @@ See [`.env.example`](./.env.example). Important:
 | `ADMIN_SECRET` | JWT signing secret (≥ 32 chars) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for sitemap, OG, schema |
 
+### Cloudflare Turnstile (production, optional)
+
+Bot protection for `/submit`. Keys are env-only — never commit real values.
+
+1. Cloudflare dashboard → **Turnstile** → **Add site** (`deals.madhudadi.in`).
+2. Set **both** variables in the server `.env`:
+   - `TURNSTILE_SECRET_KEY` — server-side secret (verify token)
+   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — public site key (widget)
+3. Deploy. Parity is fail-closed: with both keys set the server verifies the
+   token and the form renders the widget; with neither set the form falls back
+   to honeypot + timing checks; setting **exactly one** key is a
+   misconfiguration and production rejects submissions until the second key is
+   added (`lib/actions.ts`). `pnpm test:turnstile-config` enforces the parity
+   rule in CI.
+
 ---
 
 ## SEO / AEO / GEO

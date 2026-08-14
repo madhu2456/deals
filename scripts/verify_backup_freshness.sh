@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # F011: fail if newest SQLite backup is older than MAX_AGE_HOURS (default 48).
+# awk/date only — no python3 dependency (the node:22-bookworm-slim runner
+# image ships none, and this script runs inside the container for
+# named-volume deploys; see deploy.sh --install-backup-cron).
 set -euo pipefail
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/deals}"
 MAX_AGE_HOURS="${MAX_AGE_HOURS:-48}"
@@ -15,6 +18,7 @@ if [[ -z "${newest:-}" ]]; then
 fi
 ts=${newest%% *}
 path=${newest#* }
-age_h=$(python3 -c "import time; print((time.time()-float('$ts'))/3600)")
+now=$(date +%s)
+age_h=$(awk -v now="$now" -v t="$ts" 'BEGIN { printf "%.3f", (now - t) / 3600 }')
 echo "Newest: $path age_h=$age_h (max $MAX_AGE_HOURS)"
-python3 -c "import sys; sys.exit(0 if float('$age_h') <= float('$MAX_AGE_HOURS') else 1)"
+awk -v a="$age_h" -v m="$MAX_AGE_HOURS" 'BEGIN { exit (a <= m ? 0 : 1) }'

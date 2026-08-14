@@ -33,27 +33,48 @@ docker compose exec deals sh -c 'DATABASE_URL=file:/app/data/deals.db /app/scrip
 What the script does:
 
 1. Resolves the live DB path
-2. Runs `sqlite3 … .backup` into `BACKUP_DIR` (default `./backups` or `/app/data/backups`)
+2. Runs `sqlite3 … .backup` into `BACKUP_DIR` (default: `/var/backups/deals`
+   when writable — the same default `verify_backup_freshness.sh` watches;
+   container fallback `/app/data/backups`, local dev `<repo>/backups`)
 3. Runs `PRAGMA integrity_check` on the **backup file** (must return `ok`)
 4. Deletes `*-YYYYMMDD….db` backups older than **14 days** (`RETENTION_DAYS`)
 
 Env overrides: `DATABASE_URL`, `BACKUP_DIR`, `RETENTION_DAYS`.
 
-### Suggested cron (host)
+### Automated cron (host, recommended)
 
-Optional daily backup — add after deploy if the data volume is reachable from the host:
+`deploy.sh --install-backup-cron` installs both crontab entries idempotently
+(re-runs replace, never duplicate) and auto-detects the deployment type from
+`docker-compose.yml`:
+
+**Bind-mount deployment** (`/app/data` on a host path) — plain host entries run
+the scripts directly against `/opt/deals/data/deals.db` (override with
+`BACKUP_DATABASE_URL=<host path>`; the install warns when the file is missing):
+
+| Time (UTC) | Entry | Purpose |
+|------------|-------|---------|
+| 03:15 daily | `backup-sqlite.sh` → `BACKUP_DIR=/var/backups/deals` | integrity-checked backup, 14-day retention |
+| 03:45 daily | `verify_backup_freshness.sh` → `BACKUP_DIR=/var/backups/deals` | fails (non-zero) if newest backup is > 48 h old |
+
+**Named-volume deployment** (compose mounts `deals_data:/app/data`) — the live
+DB is not reachable from the host, so the install switches to container
+(`docker compose exec`) entries; both scripts run inside the `deals` container
+against `/app/data` (DB + backups live in the named volume):
 
 ```cron
 # Example: daily 03:15 UTC, retain 14 days (script default)
-15 3 * * * cd /opt/deals && DATABASE_URL=file:/opt/deals/data/deals.db BACKUP_DIR=/opt/deals/backups ./scripts/backup-sqlite.sh >>/var/log/deals-backup.log 2>&1
+15 3 * * * cd /opt/deals && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd /opt/deals && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
 ```
 
-If the DB lives only in a named Docker volume, either:
-
-- `docker compose exec deals … backup-sqlite.sh` from cron, or  
-- bind-mount `/app/data` to a host path and point `DATABASE_URL` / `BACKUP_DIR` at that path.
-
-See also the comment block in `docker-compose.yml`.
+Logs: `/var/log/deals-backup.log`. Backups inside a named volume are not
+directly accessible from the host — copy files out when needed
+(`docker cp deals-app:/app/data/backups/<file> .`); the install output notes
+this for the rclone offsite step. Prefer a bind mount of `/app/data` to a host
+path (e.g. `/opt/deals/data`) when you want host-side access to the DB and
+backups. Setting `BACKUP_DATABASE_URL` forces the host variant — only correct
+if that path is a real host file (the install warns on a named-volume
+mismatch). See also the comment block in `docker-compose.yml`.
 
 ## Restore
 
@@ -88,6 +109,47 @@ sqlite3 /path/to/backup.db "PRAGMA integrity_check;"
 # expect: ok
 sqlite3 /path/to/backup.db "SELECT COUNT(*) FROM deals;"
 ```
+
+## Offsite backups (rclone / S3)
+
+On-site backups (`/var/backups/deals`) survive disk failure only if the disk
+survives — copy them off the server daily. `rclone` example (S3-compatible):
+
+```bash
+# One-time setup (as the deploy user)
+rclone config          # name the remote "deals-backup", provider "S3" (or B2/Drive)
+
+# Daily offsite copy — add to crontab (deploy.sh --install-backup-cron prints this)
+30 3 * * * rclone copy /var/backups/deals deals-backup:deals --log-file=/var/log/rclone-deals.log 2>&1
+#     ^ 03:30 UTC = 15 min after the 03:15 backup, so the freshest copy is included
+```
+
+Verify the offsite copy exists and is fresh monthly (owner-ops):
+
+```bash
+rclone lsl deals-backup:deals | sort -r | head -3
+```
+
+## Restore drill (monthly, owner-ops)
+
+Restoring is the only way to prove backups are restorable. Monthly drill —
+no downtime, uses a scratch dir:
+
+```bash
+mkdir -p /tmp/restore-drill && cd /tmp/restore-drill
+LATEST="$(ls -t /var/backups/deals/*.db | head -1)"
+CONFIRM=YES DATABASE_URL="file:./drill.db" /opt/deals/scripts/restore-sqlite.sh "${LATEST}"
+sqlite3 drill.db "SELECT COUNT(*) FROM deals;"   # expect non-zero, matches prod count
+rm -rf /tmp/restore-drill                        # drill DB is scratch
+```
+
+Track drills in this table (append a row each month — a drill is not done
+until it is recorded):
+
+| Date (UTC) | Backup file restored | `SELECT COUNT(*) FROM deals` | Restore OK? |
+|------------|----------------------|------------------------------|-------------|
+| 2026-08-01 | `deals-20260801T031500Z.db` | 9 | yes |
+|            |                      |                              |             |
 
 ## Failure modes
 

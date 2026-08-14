@@ -34,6 +34,7 @@ import {
 } from "@/lib/site";
 import { CopyCodeButton } from "./CopyCodeButton";
 import { ClaimDealButton } from "./ClaimDealButton";
+import { ReportBrokenDeal } from "./ReportBrokenDeal";
 
 interface DealPageProps {
   params: Promise<{ slug: string }>;
@@ -287,6 +288,7 @@ export default async function DealPage({ params }: DealPageProps) {
                   <p className="mt-3 whitespace-pre-line text-pretty leading-relaxed text-muted-foreground">
                     {deal.description}
                   </p>
+                  <ReportBrokenDeal dealId={deal.id} brandName={deal.brandName} />
                 </CardContent>
               </Card>
 

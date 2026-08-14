@@ -92,6 +92,13 @@ async function main(): Promise<void> {
         if (existsSync(source + suffix)) copyFileSync(source + suffix, dbPath + suffix);
       }
       console.log(`Using copy of ${source} → ${dbPath}`);
+      // Bring the copy up to the latest schema (e.g. F-DEAL-006 report
+      // columns) on the scratch DB only — never the live/dev DB.
+      execFileSync(PRISMA_BIN, ["migrate", "deploy"], {
+        cwd: repoRoot,
+        env: { ...process.env, DATABASE_URL: dbUrl },
+        stdio: "inherit",
+      });
     } else {
       console.log("No source DB found — creating fresh DB via prisma migrate deploy");
       execFileSync(PRISMA_BIN, ["migrate", "deploy"], {

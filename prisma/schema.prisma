@@ -50,6 +50,8 @@ model Deal {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   approvedAt        DateTime?
+  brokenReportedAt  DateTime? // first user "broken deal" report (rate-limited)
+  brokenReportCount Int      @default(0) // total user reports (admin visibility)
 
   @@index([status])
   @@index([categoryId])

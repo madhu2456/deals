@@ -9,7 +9,9 @@
 #
 # Env:
 #   DATABASE_URL  — Prisma-style URL (file:./dev.db or file:/app/data/deals.db)
-#   BACKUP_DIR    — destination directory (default: <repo>/backups or /app/data/backups)
+#   BACKUP_DIR    — destination directory (default: /var/backups/deals when
+#                   writable — matches verify_backup_freshness.sh; container
+#                   fallback /app/data/backups; local dev <repo>/backups)
 #   RETENTION_DAYS — days to keep (default: 14)
 #
 # Exit: 0 success, 1 failure.
@@ -65,8 +67,16 @@ fi
 
 DB_PATH="$(resolve_db_path)"
 
+# Default must align with scripts/verify_backup_freshness.sh (F-DEAL-013):
+# the host cron convention is /var/backups/deals, so a daily backup + daily
+# freshness check watch the SAME directory. Only used when present+writable
+# (host runs); containers fall back to /app/data/backups, local dev to
+# <repo>/backups. Cron installs always pass BACKUP_DIR explicitly
+# (deploy.sh --install-backup-cron).
 if [[ -n "${BACKUP_DIR:-}" ]]; then
   DEST="${BACKUP_DIR}"
+elif [[ -d "/var/backups/deals" && -w "/var/backups/deals" ]]; then
+  DEST="/var/backups/deals"
 elif [[ -d "/app/data" ]]; then
   DEST="/app/data/backups"
 else

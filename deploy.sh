@@ -10,6 +10,9 @@
 #
 # Updates as madhu (GitHub Actions):
 #   cd /opt/deals && ./deploy.sh --update
+#
+# Backup cron (non-root, as madhu; idempotent):
+#   cd /opt/deals && ./deploy.sh --install-backup-cron
 # =============================================================================
 
 set -euo pipefail
@@ -27,6 +30,8 @@ APP_DIR="${APP_DIR:-/opt/deals}"
 MODE="bootstrap"
 if [ "${1:-}" = "--update" ] || [ "${1:-}" = "update" ]; then
   MODE="update"
+elif [ "${1:-}" = "--install-backup-cron" ] || [ "${1:-}" = "install-backup-cron" ]; then
+  MODE="install-backup-cron"
 fi
 
 echo "=== Deals deployment (${MODE}) ==="
@@ -149,6 +154,116 @@ as_root() {
   else
     return 1
   fi
+}
+
+# Idempotent host crontab for SQLite backup + freshness (F-DEAL-004).
+# Re-runs replace the marked entries instead of duplicating them. Uses the
+# documented production layout: backups in /var/backups/deals (the same
+# default verify_backup_freshness.sh watches), logs in /var/log/deals-backup.log.
+# Deployment-type detection: when docker-compose.yml mounts the named volume
+# deals_data:/app/data, the live DB is unreachable from the host, so the
+# container (docker compose exec) variants are installed — the scripts run
+# inside the deals container against /app/data (DB + backups land in the
+# volume). Bind-mount deployments keep the host entries (DB at
+# /opt/deals/data/deals.db). Override with BACKUP_DATABASE_URL to force a
+# host path explicitly (bind-mounted deployments only — see docs/ops/backup-restore.md).
+install_backup_cron() {
+  local backup_dir="${BACKUP_DIR:-/var/backups/deals}"
+  local db_url="${BACKUP_DATABASE_URL:-file:/opt/deals/data/deals.db}"
+  local compose_file="${APP_DIR}/docker-compose.yml"
+  local use_exec_variant=0
+
+  if ! command -v crontab >/dev/null 2>&1; then
+    echo "ERROR: crontab not found. Install cron first: apt-get install -y cron"
+    exit 1
+  fi
+
+  # Named-volume deployment? An explicit BACKUP_DATABASE_URL wins (operator
+  # knows the DB is host-reachable), so only auto-detect when it is unset.
+  if [ -z "${BACKUP_DATABASE_URL:-}" ] && [ -f "${compose_file}" ] \
+    && grep -q 'deals_data:/app/data' "${compose_file}"; then
+    use_exec_variant=1
+    echo "  Deployment detected: named volume deals_data:/app/data — installing container (exec) cron entries."
+  elif [ -f "${compose_file}" ] && grep -q 'deals_data:/app/data' "${compose_file}"; then
+    echo "WARNING: docker-compose.yml mounts named volume deals_data:/app/data but BACKUP_DATABASE_URL is set."
+    echo "  The host cron will read ${db_url} — only correct if that path is a real"
+    echo "  host file (bind mount); otherwise backups will miss the live DB."
+  fi
+
+  if [ "${use_exec_variant}" -eq 0 ] && ! command -v sqlite3 >/dev/null 2>&1; then
+    echo "WARNING: sqlite3 CLI missing on host — the daily backup entry will fail."
+    echo "  Install once: sudo apt-get install -y sqlite3"
+  fi
+
+  # Ensure the host backup dir exists (root/sudo needed once under
+  # /var/backups). Container (exec) entries write the named volume directly;
+  # the host dir only matters for the host variant + the rclone offsite copy.
+  if [ "${use_exec_variant}" -eq 0 ]; then
+    if ! as_root mkdir -p "${backup_dir}"; then
+      echo "WARNING: cannot create ${backup_dir} (need root or passwordless sudo)."
+      echo "  Run once: sudo mkdir -p ${backup_dir} && sudo chown ${DEPLOY_USER}:${DEPLOY_USER} ${backup_dir}"
+    else
+      as_root chown "${DEPLOY_USER}:${DEPLOY_USER}" "${backup_dir}" 2>/dev/null || true
+      as_root chmod 700 "${backup_dir}" 2>/dev/null || true
+    fi
+
+    # Warn when the DB is not reachable from the host (named-volume deploys
+    # are handled above via the exec variant).
+    local db_path="${db_url#file:}"
+    if [ ! -f "${db_path}" ]; then
+      echo "WARNING: database not found at ${db_path}."
+      echo "  If /app/data is a named Docker volume (docker-compose.yml), re-run"
+      echo "  WITHOUT BACKUP_DATABASE_URL so the container (exec) entries are installed,"
+      echo "  or bind-mount /app/data to a host path (recommended)."
+    fi
+  else
+    echo "  Backups land in /app/data/backups (inside the named volume)."
+    echo "  Copy files out for offsite/restore work, e.g.: docker cp deals-app:/app/data/backups/<file> ."
+  fi
+
+  # Idempotent rewrite: drop previous deals-backup entries, keep the rest.
+  local tmp
+  tmp="$(mktemp)"
+  if ! crontab -l 2>/dev/null | grep -v -e 'deals-sqlite-backup' -e 'deals-backup-freshness' -e 'backup-sqlite.sh' -e 'verify_backup_freshness.sh' >"${tmp}"; then
+    : >"${tmp}"
+  fi
+  if [ "${use_exec_variant}" -eq 1 ]; then
+    cat >>"${tmp}" <<EOF
+# deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC; container exec)
+15 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1
+# deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC; container exec)
+45 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
+EOF
+  else
+    cat >>"${tmp}" <<EOF
+# deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC)
+15 3 * * * cd ${APP_DIR} && DATABASE_URL=${db_url} BACKUP_DIR=${backup_dir} ./scripts/backup-sqlite.sh >>/var/log/deals-backup.log 2>&1
+# deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC)
+45 3 * * * cd ${APP_DIR} && BACKUP_DIR=${backup_dir} ./scripts/verify_backup_freshness.sh >>/var/log/deals-backup.log 2>&1
+EOF
+  fi
+  if ! crontab "${tmp}"; then
+    echo "ERROR: crontab install failed."
+    rm -f "${tmp}"
+    exit 1
+  fi
+  rm -f "${tmp}"
+
+  echo "  Installed (idempotent) crontab entries:"
+  crontab -l | grep -e 'deals-sqlite-backup' -e 'deals-backup-freshness' -e 'backup-sqlite.sh' -e 'verify_backup_freshness.sh' | sed 's/^/    /'
+
+  echo ""
+  if [ "${use_exec_variant}" -eq 1 ]; then
+    echo "  Offsite copy (owner-ops — not installed automatically; named-volume deploys"
+    echo "  must read /app/data/backups, e.g. 'docker compose exec deals ls /app/data/backups'):"
+  else
+    echo "  Offsite copy (owner-ops — not installed automatically):"
+  fi
+  echo "    rclone config   # remote 'deals-backup' → S3/B2/Drive, then:"
+  echo "    rclone copy ${backup_dir} deals-backup:deals --log-file=/var/log/rclone-deals.log"
+  echo "    crontab -e      # e.g. daily 03:30 UTC:"
+  echo "    # 30 3 * * * rclone copy ${backup_dir} deals-backup:deals --log-file=/var/log/rclone-deals.log 2>&1"
+  echo "  Monthly restore drill + date tracking: see docs/ops/backup-restore.md"
 }
 
 # Install repo nginx config → /etc/nginx/sites-available/deals (every deploy)
@@ -308,6 +423,21 @@ fix_ownership() {
     echo "Ownership of ${APP_DIR} → ${DEPLOY_USER}"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# Backup cron install (non-root: run as madhu — never requires root)
+# ---------------------------------------------------------------------------
+if [ "${MODE}" = "install-backup-cron" ]; then
+  echo "    Running backup-cron install as $(whoami) for ${APP_DIR}..."
+  install_backup_cron
+
+  echo ""
+  echo "=== Backup cron install complete ==="
+  echo "  Crontab: crontab -l | grep deals-"
+  echo "  Logs:    tail -f /var/log/deals-backup.log"
+  echo "  Offsite: rclone copy (see output above + docs/ops/backup-restore.md)"
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Update path (non-root: run as madhu — NEVER requires root)

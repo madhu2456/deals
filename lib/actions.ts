@@ -369,8 +369,13 @@ export async function adminCreateDealAction(formData: FormData) {
     existingSlugs.map((d) => d.slug)
   );
 
+  // F-DEAL-012: an admin-created APPROVED deal must carry an approval
+  // timestamp (drives getLatestDeals ordering + JSON-LD validFrom); anything
+  // else stays null until it is actually approved.
+  const approvedAt = data.deal.status === "APPROVED" ? new Date() : null;
+
   try {
-    await createDeal({ ...data.deal, slug });
+    await createDeal({ ...data.deal, slug, approvedAt });
   } catch {
     return {
       success: false as const,
