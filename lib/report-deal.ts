@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getSiteUrl } from "@/lib/site";
+export { isOriginAllowed as isReportOriginAllowed } from "@/lib/origin";
 
 /**
  * "Report broken deal" (F-DEAL-006) — user-submitted reports that a deal's
@@ -21,28 +21,16 @@ export const REPORT_WINDOW_MS = 60 * 60 * 1000;
 /** Mirrors the click-route guard: cuid() ids are ~25 chars, cap at 64. */
 export const REPORT_ID_MAX_LEN = 64;
 
-/** Origins allowed to POST the report endpoint (CSRF hardening). */
-const REPORT_ALLOWED_ORIGINS = new Set<string>([
-  getSiteUrl(),
-  "https://deals.madhudadi.in",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:3001",
-  "http://127.0.0.1:3002",
-]);
-
 /**
  * CSRF guard for the report route: the endpoint mutates persistent review
  * state (brokenReportedAt/brokenReportCount), so browser POSTs must come from
  * the site itself (or localhost/dev). A missing Origin — curl, uptime
  * monitors, server-to-server — is allowed: such clients cannot be tricked
  * into cross-site state changes. Disallowed origins → route returns 403.
+ *
+ * Defined in lib/origin.ts and re-exported here so the report route keeps its
+ * import name; the click route (F-DEAL-016) uses the same shared helper.
  */
-export function isReportOriginAllowed(origin: string | null): boolean {
-  return origin === null || REPORT_ALLOWED_ORIGINS.has(origin);
-}
 
 export type BrokenReportResult =
   | { success: true }

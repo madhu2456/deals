@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { incrementClicks } from "@/lib/data";
+import { isOriginAllowed } from "@/lib/origin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 
@@ -7,6 +8,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF guard (F-DEAL-016): the endpoint mutates persistent state (click
+  // counter), so browser POSTs must come from the site itself. Origin-less
+  // clients (curl, monitors) pass — they cannot be tricked cross-site.
+  if (!isOriginAllowed(request.headers.get("origin"))) {
+    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   if (!id || typeof id !== "string" || id.length > 64) {

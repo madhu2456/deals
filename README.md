@@ -65,7 +65,7 @@ cp .env.example .env
 
 # Database
 pnpm exec prisma migrate dev
-pnpm seed          # categories only (no mock deals)
+pnpm seed          # categories + 7 curated deals (create-if-missing, idempotent)
 
 # Dev server
 pnpm dev
@@ -180,6 +180,8 @@ Bot protection for `/submit`. Keys are env-only — never commit real values.
 - Deal JSON-LD prices derive only from parseable currency-prefixed `discountedPrice` values; FREE_TIER deals emit price `"0"`; unparseable prices are omitted rather than estimated.
 - Answer-first homepage copy + FAQ for answer engines
 - The [`/llms.txt`](https://deals.madhudadi.in/llms.txt) route (`app/llms.txt/route.ts`) for LLM context
+- `/search?q=…` is a thin 307 redirect to `/deals?q=…` (kept for legacy bookmarks;
+  `noindex`, not in the sitemap — nothing in the UI links to it)
 
 Visibility work is supported by **[Adticks](https://adticks.com)** (SEO & GEO).
 

@@ -4,7 +4,8 @@ import { getSiteUrl } from "@/lib/site";
 /**
  * Crawl policy for Google, Bing, and major AI answer engines (AEO / GEO).
  * Admin + API are blocked; public content is open to search & citation bots.
- * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot) are blocked.
+ * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot,
+ * Applebot-Extended, Bytespider) are blocked.
  * Claude-SearchBot / Claude-User / Claude-Web are allowed (citation); ClaudeBot training stays blocked.
  */
 export default function robots(): MetadataRoute.Robots {
@@ -95,6 +96,18 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: "CCBot",
+        disallow: ["/"],
+      },
+      // Applebot-Extended (Apple's training crawler) and Bytespider
+      // (ByteDance training crawler) are distinct from their search crawlers
+      // (Applebot above; Bytespider has no search role here). Same
+      // training-block policy as portfolio/blog/enroller (F-XSITE-010).
+      {
+        userAgent: "Applebot-Extended",
+        disallow: ["/"],
+      },
+      {
+        userAgent: "Bytespider",
         disallow: ["/"],
       },
     ],

@@ -4,7 +4,8 @@ import { Footer } from "../components/Footer";
 import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Terms of Service | ${SITE_NAME}`,
+  // absolute: the layout template would append " | SITE_NAME" again (F-DEAL-011)
+  title: { absolute: `Terms of Service | ${SITE_NAME}` },
   description: `Terms governing your use of ${SITE_NAME}, deal submissions, and directory listings.`,
   alternates: { canonical: "/terms" },
   robots: { index: true, follow: true },

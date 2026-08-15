@@ -4,7 +4,8 @@ import { Footer } from "../components/Footer";
 import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Privacy Policy | ${SITE_NAME}`,
+  // absolute: the layout template would append " | SITE_NAME" again (F-DEAL-011)
+  title: { absolute: `Privacy Policy | ${SITE_NAME}` },
   description: `How ${SITE_NAME} collects, uses, and protects your information when you browse or submit a deal.`,
   alternates: { canonical: "/privacy" },
   robots: { index: true, follow: true },

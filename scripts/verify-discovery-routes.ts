@@ -33,7 +33,14 @@ function mainRobots() {
     assert(rule.disallow !== "/", `${bot} must not disallow /`);
   }
 
-  const trainingBlocked = ["GPTBot", "ClaudeBot", "anthropic-ai", "CCBot"];
+  const trainingBlocked = [
+    "GPTBot",
+    "ClaudeBot",
+    "anthropic-ai",
+    "CCBot",
+    "Applebot-Extended",
+    "Bytespider",
+  ];
   for (const bot of trainingBlocked) {
     const rule = list.find((r) => ruleAgents(r).includes(bot));
     assert(rule, `robots missing block rule for ${bot}`);

@@ -8,7 +8,9 @@ const title = `About ${SITE_NAME}`;
 const description = `Learn about ${SITE_NAME} — a curated directory of verified deals, coupons, and discounts for software, SaaS tools, and more.`;
 
 export const metadata: Metadata = {
-  title,
+  // absolute: the layout template would append " | SITE_NAME" again
+  // (same duplicate-suffix bug fixed on /privacy and /terms, F-DEAL-011)
+  title: { absolute: title },
   description,
   alternates: { canonical: "/about" },
   openGraph: {

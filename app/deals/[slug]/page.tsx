@@ -90,6 +90,10 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
       title: socialTitle,
       description,
       url: absoluteUrl(path),
+      // Inherited from the layout when absent, but set explicitly so the
+      // deal openGraph is self-contained (F-XSITE-008).
+      siteName: SITE_NAME,
+      locale: "en_IN",
       // Next Metadata OpenGraphType has no "product"; Product JSON-LD carries commerce type.
       // Prefer merchant logo for social previews when present (matches Product.image).
       type: "website",
@@ -504,6 +508,17 @@ export default async function DealPage({ params }: DealPageProps) {
             showAffiliateNote={false}
           />
         </div>
+        {/* F-DEAL-007: mobile bar renders the affiliate note the desktop card
+            shows under its claim button (parity). */}
+        <p className="mx-auto mt-1.5 max-w-4xl text-center text-[11px] leading-snug text-muted-foreground">
+          Affiliate link — we may earn a commission.{" "}
+          <a
+            href="/affiliate-disclosure"
+            className="underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          >
+            Disclosure
+          </a>
+        </p>
       </div>
 
       <Footer />

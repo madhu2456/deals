@@ -25,10 +25,12 @@
     "test:sitemap-stability": "tsx scripts/verify-sitemap-stability.ts",
     "test:turnstile-config": "tsx scripts/verify-turnstile-config.ts",
     "test:report-endpoint": "tsx scripts/verify-report-endpoint.ts",
+    "test:click-origin": "tsx scripts/verify-click-origin.ts",
+    "test:secret-scanner": "tsx scripts/verify-secret-scanner.ts",
     "test:approved-at": "tsx scripts/verify-approved-at.ts",
     "test:offer-checker": "tsx scripts/verify-offer-checker.ts",
     "check:offers": "tsx scripts/check-offer-validity.ts",
-    "test:all": "pnpm test:discovery && pnpm test:content && pnpm test:jsonld && pnpm test:format && pnpm test:rate-limit && pnpm test:redis-limiter && pnpm test:pagination && pnpm test:seed-idempotency && pnpm test:sitemap-stability && pnpm test:approved-at && pnpm test:report-endpoint && pnpm test:turnstile-config && pnpm test:offer-checker && npx tsc --noEmit"
+    "test:all": "pnpm test:discovery && pnpm test:content && pnpm test:jsonld && pnpm test:format && pnpm test:rate-limit && pnpm test:redis-limiter && pnpm test:pagination && pnpm test:seed-idempotency && pnpm test:sitemap-stability && pnpm test:approved-at && pnpm test:report-endpoint && pnpm test:click-origin && pnpm test:secret-scanner && pnpm test:turnstile-config && pnpm test:offer-checker && npx tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

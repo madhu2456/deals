@@ -7,6 +7,7 @@
 #   scripts/verify-no-secrets.sh            # scan staged changes (pre-commit)
 #   scripts/verify-no-secrets.sh --tree     # scan all tracked files (CI)
 #   scripts/verify-no-secrets.sh --history  # scan full git history (audit)
+#   scripts/verify-no-secrets.sh --scan PATH  # scan a file/dir (self-test fixtures)
 #
 # Exit codes: 0 = clean, 1 = matches found, 2 = usage/error.
 # No external deps (awk + grep only). If gitleaks is installed it is used for
@@ -14,18 +15,32 @@
 set -u
 
 MODE="staged"
+SCAN_TARGET=""
 case "${1:-}" in
   "" | --staged) ;;
   --tree) MODE="tree" ;;
   --history) MODE="history" ;;
-  *) echo "usage: $0 [--staged|--tree|--history]" >&2; exit 2 ;;
+  --scan)
+    MODE="scan"
+    SCAN_TARGET="${2:-}"
+    if [ -z "$SCAN_TARGET" ]; then
+      echo "usage: $0 --scan PATH" >&2
+      exit 2
+    fi
+    ;;
+  *) echo "usage: $0 [--staged|--tree|--history|--scan PATH]" >&2; exit 2 ;;
 esac
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "error: not inside a git repository" >&2; exit 2; }
 cd "$ROOT" || exit 2
 
 # ---------------------------------------------------------------------------
-# Pattern list: <regex>\t<label>  (POSIX ERE)
+# Pattern list: <regex>\t<label>  (POSIX ERE; NO comment lines in this block —
+# every non-empty line is compiled as a regex). The ADMIN_USERNAME and
+# INDEXNOW_KEY patterns exclude the quote char so the tracked .env.example
+# template values (ADMIN_USERNAME="admin", INDEXNOW_KEY="…hex…") are not
+# false positives; unquoted occurrences — scripts, CI configs, committed
+# envs — still match, and the planted-fixture test covers both shapes.
 # ---------------------------------------------------------------------------
 PATTERNS='
 sk-(ant-)?[A-Za-z0-9_-]{44,}	openai/sk-api-key
@@ -55,6 +70,10 @@ REVALIDATE_SECRET[=:][^[:space:]#$]{6,}	revalidate-secret
 AWS_SECRET_ACCESS_KEY[=:][^[:space:]#$]{6,}	aws-secret-access-key
 client_secret[=:][^[:space:]#$,;]{6,}	oauth-client-secret
 STRIPE_SECRET_KEY[=:][^[:space:]#$]{6,}	stripe-secret-key
+ADMIN_SECRET[=:][^[:space:]#$]{8,}	admin-secret
+ADMIN_PASSWORD[=:][^[:space:]#$]{4,}	admin-password
+ADMIN_USERNAME[=:][^[:space:]#$"]{6,}	admin-username
+INDEXNOW_KEY[=:][^[:space:]#$"]{8,}	indexnow-key
 [A-Za-z0-9_.-]+://[^[:space:]/]+:[^@[:space:]]+@	url-with-credentials
 '
 
@@ -123,10 +142,15 @@ BEGIN {
 AWKHEAD
   printf '%s\n' "$PATTERNS" | while IFS=$'\t' read -r re label; do
     [ -z "$re" ] && continue
+    # Escape double quotes: patterns like [^[:space:]#$"] must survive the
+    # awk string literal in def("...", "...") — otherwise awk syntax-errors
+    # and the scan silently reports clean.
+    re="${re//\"/\\\"}"
+    label="${label//\"/\\\"}"
     printf '  def("%s", "%s")\n' "$re" "$label"
   done
   cat <<'AWKTAIL'
-  ph = "change[-_ ]?me|your[-_ ]|[Ee]xample|[Pp]laceholder|[Dd]ummy|[Rr]eplace|[Ss]ample|[Ff]ake|ci[-_ ]?only|ci[-_ ]?test|test[-_]|[Ii]nsecure|django-insecure|[Ll]orem|xxxx+|[Dd]ev-?only|pre-?prod|sanitized|redacted|[Pp]ending|to[-_ ]?be[-_ ]?(filled|set|done)|^changeme$|^secret$|^password$|^passwd$|^postgres$|^redis$|^root$|^admin$|123456|qwerty|random|generat"
+  ph = "change[-_ ]?me|your[-_ ]|[Ee]xample|[Pp]laceholder|[Dd]ummy|[Rr]eplace|[Ss]ample|[Ff]ake|ci[-_ ]?only|ci[-_ ]?test|test[-_]|[Ii]nsecure|django-insecure|[Ll]orem|xxxx+|[Dd]ev-?only|[Bb]uild|pre-?prod|sanitized|redacted|[Pp]ending|to[-_ ]?be[-_ ]?(filled|set|done)|^changeme$|^secret$|^password$|^passwd$|^postgres$|^redis$|^root$|^admin$|123456|qwerty|random|generat"
 }
 MODE == "history" && /^COMMIT\|/ { meta = substr($0, 8); file = ""; next }
 MODE == "history" && /^diff --git / {
@@ -164,6 +188,10 @@ case "$MODE" in
   tree)
     COMBINED="$(printf '%s\n' "$PATTERNS" | grep -v '^$' | cut -f1 | paste -sd'|' -)"
     OUT="$(git ls-files -z | xargs -0 -r grep -HnI --color=never -E "$COMBINED" 2>/dev/null | awk -v MODE=tree -f "$AWKPROG")"
+    ;;
+  scan)
+    COMBINED="$(printf '%s\n' "$PATTERNS" | grep -v '^$' | cut -f1 | paste -sd'|' -)"
+    OUT="$(grep -rHnI --color=never -E "$COMBINED" "$SCAN_TARGET" 2>/dev/null | awk -v MODE=tree -f "$AWKPROG")"
     ;;
 esac
 
