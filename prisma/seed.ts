@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { generateUniqueSlug } from "@/lib/slug";
+import { truncateAtSentence } from "@/lib/format";
 
 type CuratedDeal = {
   /** Stable URL slug — keep fixed so re-seeds skip instead of duplicating */
@@ -18,6 +19,8 @@ type CuratedDeal = {
   originalPrice?: string | null;
   discountedPrice?: string | null;
   description: string;
+  /** Complete-sentence short for meta + Offer JSON-LD. Derived if omitted. */
+  shortDescription?: string;
   categorySlug: string;
   isFeatured?: boolean;
   couponCode?: string | null;
@@ -38,7 +41,7 @@ const CURATED_DEALS: CuratedDeal[] = [
     // No verified brand logo asset in-repo — null avoids Cloudinary demo placeholders
     logoUrl: null,
     description:
-      "Get OpenCode, an AI coding agent built for the terminal and your editor, starting at $5 per month via this exclusive link. Use the link to claim the offer, then complete signup on OpenCode. Pricing and eligibility are confirmed on the merchant site at checkout.",
+      "Get OpenCode, an AI coding agent built for the terminal and your editor, starting at $5 per month via this link. Use the link to claim the offer, then complete signup on OpenCode. Pricing and eligibility are confirmed on the merchant site at checkout.",
     categorySlug: "ai-and-machine-learning",
     isFeatured: true,
   },
@@ -100,7 +103,7 @@ const CURATED_DEALS: CuratedDeal[] = [
   },
   {
     slug: "hidely-vpn-premium-12-months-free",
-    title: "Hidely VPN Premium — 12 months free with code HIDELY-VPN",
+    title: "Hidely VPN Premium — 12 months free",
     brandName: "Hidely VPN",
     brandUrl: "https://play.google.com/store/apps/details?id=com.hidely.hidely_vpn",
     dealUrl: "https://play.google.com/store/apps/details?id=com.hidely.hidely_vpn",
@@ -109,12 +112,14 @@ const CURATED_DEALS: CuratedDeal[] = [
     originalPrice: "Premium (12 mo)",
     discountedPrice: "Free",
     couponCode: "HIDELY-VPN",
+    shortDescription:
+      "How to redeem Hidely VPN Premium (code HIDELY-VPN): install from the stated store, apply the code, confirm status. Offer can expire; this page is not hide.me.",
     description:
-      "Get Hidely VPN Premium for 12 months free with redeem code HIDELY-VPN. How to claim: (1) Download Hidely VPN from the Google Play Store. (2) Complete sign-up and upgrade to the Premium plan. (3) Enter redeem code HIDELY-VPN. Enjoy 12 months of Hidely VPN Premium if the code is still valid. Offer availability, platform support (Play Store), and redemption rules are confirmed in the app — codes can expire or be limited.",
+      "Hidely VPN Premium (Hidely, not hide.me) is 12 months free with redeem code HIDELY-VPN. How to claim: (1) Download Hidely VPN from the Google Play Store. (2) Complete sign-up and upgrade to the Premium plan. (3) Enter redeem code HIDELY-VPN. Confirm Premium status in the Hidely app. Offer availability and redemption rules are confirmed in-app; codes can expire or be limited.",
     categorySlug: "security-and-privacy",
     isFeatured: true,
     notes:
-      "Redeem code HIDELY-VPN. Android Play Store flow. Verify code still works in-app.",
+      "Redeem code HIDELY-VPN. Android Play Store flow. Verify code still works in-app. Hidely is not hide.me.",
   },
   {
     slug: "dashlane-premium-6-months-free",
@@ -126,12 +131,14 @@ const CURATED_DEALS: CuratedDeal[] = [
     discountValue: "6 months free",
     originalPrice: "Premium",
     discountedPrice: "Free (6 months)",
+    shortDescription:
+      "Current Dashlane Premium offer on this page: how to claim, what you get, and that terms can change. Not Dashlane's discontinued Free plan (ended 16 Sep 2025).",
     description:
-      "Get Dashlane Premium free for 6 months via this exclusive claim link — secure password manager with cross-device sync, dark web monitoring, and VPN included where eligible. One of the most trusted password managers for personal and work use. Open the claim link, create or sign in to your Dashlane account, and complete any required steps on Dashlane to activate the 6-month Premium offer. Eligibility, region, and plan details are confirmed at checkout on Dashlane; offer can change or expire.",
+      "This is a six-month Dashlane Premium offer — not Dashlane's consumer Free plan, which ended on 16 September 2025. Open the claim link, create or sign in to your Dashlane account, and finish any steps Dashlane shows. Eligibility, region, and plan details are confirmed on Dashlane; the offer can change or expire. We do not invent an end date here.",
     categorySlug: "security-and-privacy",
     isFeatured: true,
     notes:
-      "Claim link: https://www.dashlane.com/cs/d-PEiUZsVsXp — verify offer still active.",
+      "Claim link: https://www.dashlane.com/cs/d-PEiUZsVsXp — confirm the offer on Dashlane. Not the consumer Free plan that ended 16 Sep 2025.",
   },
   {
     slug: "google-ai-plus-12-months-free-internshala-india",
@@ -178,7 +185,9 @@ async function main() {
     }
 
     const slug = sample.slug;
-    const shortDescription = sample.description.slice(0, 140);
+    const shortDescription =
+      sample.shortDescription?.trim() ||
+      truncateAtSentence(sample.description);
 
     // Create-if-missing ONLY. Seeding must never touch existing rows: the old
     // upsert update-branch re-stamped status=APPROVED + approvedAt=new Date()

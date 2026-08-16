@@ -14,6 +14,10 @@
 #                   fallback /app/data/backups; local dev <repo>/backups)
 #   RETENTION_DAYS — days to keep (default: 14)
 #
+# Writes to *.db.tmp, PRAGMA integrity_check, then mv to the final *.db.
+# LAST_SUCCESS (ISO-8601 UTC + backup path) is written only after that mv.
+# A failed check or killed write never leaves a partial final *.db.
+#
 # Exit: 0 success, 1 failure.
 set -euo pipefail
 
@@ -88,26 +92,41 @@ mkdir -p "${DEST}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BASE="$(basename "${DB_PATH}" .db)"
 BACKUP_FILE="${DEST}/${BASE}-${STAMP}.db"
+TMP_FILE="${BACKUP_FILE}.tmp"
 
 echo "[backup] source=${DB_PATH}"
 echo "[backup] dest=${BACKUP_FILE}"
 
-# Online consistent backup (holds a brief read lock)
-sqlite3 "${DB_PATH}" ".backup '${BACKUP_FILE}'"
-
-# Integrity check on the backup copy (never modify live DB for verification)
-CHECK="$(sqlite3 "${BACKUP_FILE}" "PRAGMA integrity_check;")"
-if [[ "${CHECK}" != "ok" ]]; then
-  echo "error: integrity_check failed on backup: ${CHECK}" >&2
-  rm -f "${BACKUP_FILE}"
+# Online consistent backup (holds a brief read lock). Stage in .tmp so a
+# killed write never publishes a partial final *.db with a fresh mtime.
+if ! sqlite3 "${DB_PATH}" ".backup '${TMP_FILE}'"; then
+  rm -f -- "${TMP_FILE}"
+  echo "error: sqlite backup failed" >&2
   exit 1
 fi
+
+# Integrity check on the tmp copy (never modify live DB for verification)
+CHECK="$(sqlite3 "${TMP_FILE}" "PRAGMA integrity_check;")"
+if [[ "${CHECK}" != "ok" ]]; then
+  echo "error: integrity_check failed on backup: ${CHECK}" >&2
+  rm -f -- "${TMP_FILE}"
+  exit 1
+fi
+
+mv -f -- "${TMP_FILE}" "${BACKUP_FILE}"
 
 # Optional size sanity (empty DB is still valid but worth noting)
 SIZE="$(wc -c <"${BACKUP_FILE}" | tr -d ' ')"
 echo "[backup] integrity_check=ok size_bytes=${SIZE}"
 
-# Retention: delete backups older than RETENTION_DAYS
-find "${DEST}" -type f -name "${BASE}-*.db" -mtime "+${RETENTION_DAYS}" -print -delete 2>/dev/null || true
+# LAST_SUCCESS only after integrity_check=ok and the final *.db is in place.
+{
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${BACKUP_FILE}"
+} >"${DEST}/LAST_SUCCESS.tmp"
+mv -f -- "${DEST}/LAST_SUCCESS.tmp" "${DEST}/LAST_SUCCESS"
+echo "[backup] last_success=${DEST}/LAST_SUCCESS"
+
+# Retention: delete backups older than RETENTION_DAYS (final *.db only)
+find "${DEST}" -maxdepth 1 -type f -name "${BASE}-*.db" -mtime "+${RETENTION_DAYS}" -print -delete 2>/dev/null || true
 
 echo "[backup] done (retention=${RETENTION_DAYS}d)"

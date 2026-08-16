@@ -1,5 +1,6 @@
 import {
   absoluteUrl,
+  defaultOgImage,
   getSiteUrl,
   PUBLISHER,
   SITE_DESCRIPTION,
@@ -320,7 +321,10 @@ export function offerSchema(deal: {
     },
     category: deal.category.name,
     url,
-    image: [deal.logoUrl || absoluteUrl("/icon-512.png")],
+    // Product.image: merchant logoUrl, else the deal OG image — never site icon-512.
+    // og:type stays website (Next Metadata OpenGraphType has no "product");
+    // this Product JSON-LD is the commerce type.
+    image: [deal.logoUrl || defaultOgImage().url],
     offers: offer,
     ...(deal.updatedAt
       ? {
@@ -355,7 +359,7 @@ export const HOME_FAQS = [
   {
     question: `What is ${SITE_NAME}?`,
     answer:
-      `${SITE_NAME} (also called ${SITE_NAME_SHORT}) is a curated directory of verified discounts, coupon codes, and exclusive offers on software, SaaS tools, cloud services, design apps, learning platforms, and everyday products. Founded by Madhu Dadi, every public listing is reviewed before it appears.`,
+      `${SITE_NAME} (also called ${SITE_NAME_SHORT}) is a curated directory of verified software, SaaS, and app discounts. Listings are reviewed before they appear. Offers change; confirm the claim path on each deal page. Founded by Madhu Dadi.`,
   },
   {
     question: "Are the coupon codes and deals verified?",

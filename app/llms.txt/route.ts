@@ -29,10 +29,12 @@ export async function GET() {
   const indexableCategories = activeCategories.filter(
     (c) => c._count.deals >= MIN_CATEGORY_DEALS_FOR_INDEX,
   );
+  const thinCategoryCount = activeCategories.length - indexableCategories.length;
   // Deals have one category each, so summing category counts is accurate.
   const dealCount = activeCategories.reduce((s, c) => s + c._count.deals, 0);
 
-  const categoryLines = activeCategories
+  // Link only indexable hubs — thin/noindex categories stay a count, not URLs.
+  const categoryLines = indexableCategories
     .map(
       (c) =>
         `- [${c.name}](${site}/categories/${c.slug}): ${c._count.deals} live deal(s)`,
@@ -62,9 +64,10 @@ ${SITE_NAME} (${host}) is a curated public directory by ${PUBLISHER.name}. Listi
 - Approved non-expired deals: ${dealCount}
 - Categories with live deals: ${activeCategories.length}
 - Categories indexable in search (≥${MIN_CATEGORY_DEALS_FOR_INDEX} deals): ${indexableCategories.length}
+- Thin category hubs (noindex; not linked below): ${thinCategoryCount}
 - Generated: ${now.toISOString()}
 
-## Categories with live deals
+## Indexable categories
 ${categoryLines || "- (none yet)"}
 
 ## Latest verified deals

@@ -310,7 +310,97 @@ assert(HOME_FAQS[0].question.includes(SITE_NAME_SHORT), "home faq0 mentions bran
 for (const faq of HOME_FAQS) {
   assert(faq.question.length > 0, `faq question non-empty: ${faq.question.slice(0, 30)}`);
   assert(faq.answer.length > 20, `faq answer ≥20 chars: ${faq.question.slice(0, 30)}`);
+  assert(!/exclusive/i.test(faq.answer), `faq has no exclusive: ${faq.question.slice(0, 30)}`);
+  assert(!/udemy/i.test(faq.answer), `faq has no Udemy: ${faq.question.slice(0, 30)}`);
 }
+
+// ── Offer JSON-LD follows first-screen product truth (shortDescription wins) ──
+const dashlaneLive = offerSchema({
+  title: "Dashlane Premium — 6 months free",
+  slug: "dashlane-premium-6-months-free",
+  description:
+    "This is a six-month Dashlane Premium offer — not Dashlane's consumer Free plan, which ended on 16 September 2025. Confirm terms on Dashlane.",
+  shortDescription:
+    "Current Dashlane Premium offer on this page: how to claim, what you get, and that terms can change. Not Dashlane's discontinued Free plan (ended 16 Sep 2025).",
+  brandName: "Dashlane",
+  dealUrl: "https://www.dashlane.com/cs/d-PEiUZsVsXp",
+  discountType: "FREE_TIER",
+  discountValue: "6 months free",
+  discountedPrice: "Free (6 months)",
+  originalPrice: "Premium",
+  category: { name: "Security & Privacy", slug: "security-and-privacy" },
+});
+assert(dashlaneLive.name === "Dashlane Premium — 6 months free", "dashlane Offer name is branded Premium");
+assert(
+  String(dashlaneLive.description).includes("16 Sep 2025"),
+  "dashlane Offer description names Free-plan sunset"
+);
+assert(!/exclusive/i.test(JSON.stringify(dashlaneLive)), "dashlane Offer has no exclusive");
+assert((dashlaneLive.offers as Record<string, unknown>).price === "0", "dashlane live fixture stays free-tier 0");
+
+const hidelyLive = offerSchema({
+  title: "Hidely VPN Premium — 12 months free",
+  slug: "hidely-vpn-premium-12-months-free",
+  description:
+    "Hidely VPN Premium (Hidely, not hide.me) is 12 months free with redeem code HIDELY-VPN.",
+  shortDescription:
+    "How to redeem Hidely VPN Premium (code HIDELY-VPN): install from the stated store, apply the code, confirm status. Offer can expire; this page is not hide.me.",
+  brandName: "Hidely VPN",
+  dealUrl: "https://play.google.com/store/apps/details?id=com.hidely.hidely_vpn",
+  discountType: "FREE_TIER",
+  discountValue: "12 months free",
+  discountedPrice: "Free",
+  originalPrice: "Premium (12 mo)",
+  couponCode: "HIDELY-VPN",
+  category: { name: "Security & Privacy", slug: "security-and-privacy" },
+});
+assert(hidelyLive.name === "Hidely VPN Premium — 12 months free", "hidely Offer name is branded Hidely, not generic VPN");
+assert(!/generic VPN/i.test(String(hidelyLive.name)), "hidely is not retitled as generic VPN deal");
+assert(
+  String(hidelyLive.description).includes("not hide.me"),
+  "hidely Offer description disambiguates hide.me"
+);
+assert(
+  String(hidelyLive.description).includes("HIDELY-VPN"),
+  "hidely Offer description includes redeem code"
+);
+assert((hidelyLive.offers as Record<string, unknown>).price === "0", "hidely live fixture stays free-tier 0");
+
+// ── Product.image (F018): logoUrl, else deal OG — never icon-512 ──
+const logoUrl = "https://cdn.example.com/brands/adobe.png";
+const withLogo = offerSchema({
+  title: "Logo deal",
+  slug: "logo-deal",
+  description: "Has merchant logo",
+  brandName: "Adobe",
+  dealUrl: "https://adobe.com/deal",
+  discountType: "PERCENTAGE",
+  discountValue: "50%",
+  logoUrl,
+  category: { name: "Software", slug: "software" },
+});
+assert(withLogo.image[0] === logoUrl, "Product.image prefers merchant logoUrl");
+assert(
+  !JSON.stringify(withLogo.image).includes("icon-512"),
+  "Product.image with logoUrl does not use icon-512"
+);
+
+const noLogo = offerSchema({
+  title: "No-logo deal",
+  slug: "no-logo-deal",
+  description: "Falls back to deal OG image",
+  brandName: "Sample Brand",
+  dealUrl: "https://example.com/deal",
+  discountType: "PERCENTAGE",
+  discountValue: "20%",
+  category: { name: "Software", slug: "software" },
+});
+const ogFallback = defaultOgImage().url;
+assert(noLogo.image[0] === ogFallback, "Product.image without logoUrl uses deal OG image");
+assert(
+  !JSON.stringify(noLogo.image).includes("icon-512"),
+  "Product.image fallback is not icon-512"
+);
 
 // ── OG image ──
 const og = defaultOgImage();

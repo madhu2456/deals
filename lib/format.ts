@@ -50,6 +50,30 @@ export function discountLabel(
   }
 }
 
+/**
+ * Clip at a sentence boundary so meta / shortDescription never end mid-clause.
+ * If the first sentence is longer than `max`, keep that whole sentence.
+ * Strings with no terminator are left intact (no mid-clause slice).
+ */
+export function truncateAtSentence(text: string, max = 160): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= max) return normalized;
+
+  const parts = normalized.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
+  if (!parts || parts.length === 0) return normalized;
+
+  let acc = "";
+  for (const part of parts) {
+    const next = `${acc} ${part}`.replace(/\s+/g, " ").trim();
+    if (next.length > max) {
+      return acc || part.trim();
+    }
+    acc = next;
+  }
+  return acc;
+}
+
 export function statusColor(status: string): string {
   switch (status) {
     case "APPROVED":

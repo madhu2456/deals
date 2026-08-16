@@ -70,6 +70,17 @@ const sanitizeRedisKey = (key: string) =>
   key.replace(/[^a-zA-Z0-9:._@-]/g, "_").slice(0, 200);
 
 let warnedOnce = false;
+/** Increments when configured Redis is unreachable and we fail open to memory. */
+let redisFallbackCount = 0;
+
+/** `rl_redis_fallback` counter — exported for smoke tests / ops scrape. */
+export function getRedisFallbackCount(): number {
+  return redisFallbackCount;
+}
+
+function recordRedisFallback(): void {
+  redisFallbackCount += 1;
+}
 
 /**
  * Rate limiter backed by Upstash Redis REST (shared across instances) when
@@ -79,7 +90,8 @@ let warnedOnce = false;
  * Failure semantics: fail OPEN. A Redis outage must never lock out all
  * submitters — it degrades to per-instance limiting. Transient failures
  * (network errors, 5xx) log a warning once; 4xx responses mean a
- * misconfigured URL/token and log a warning on every call.
+ * misconfigured URL/token and log a warning on every call. Every Redis
+ * fail-open increments `rl_redis_fallback` (`getRedisFallbackCount`).
  *
  * Same semantics as `isRateLimited`: fixed window anchored at the first hit,
  * `true` when the count would exceed `limit` within `windowMs`.
@@ -107,14 +119,15 @@ export async function redisRateLimit({
     // 4xx from Upstash is a config error (bad URL/token) — warn on EVERY call
     // so the misconfiguration stays loud; still fail open. Network errors and
     // 5xx are transient — warn once, not per request.
+    recordRedisFallback();
     if (err instanceof UpstashHttpError && err.status >= 400 && err.status < 500) {
       console.warn(
-        `rate-limit: Upstash rate-limit misconfiguration (HTTP ${err.status}) — check UPSTASH_REDIS_REST_URL/TOKEN — falling back to in-memory`
+        `rl_redis_fallback count=${redisFallbackCount} rate-limit: Upstash rate-limit misconfiguration (HTTP ${err.status}) — check UPSTASH_REDIS_REST_URL/TOKEN — falling back to in-memory`
       );
     } else if (!warnedOnce) {
       warnedOnce = true;
       console.warn(
-        "rate-limit: Upstash Redis unreachable — failing open to in-memory limiting",
+        `rl_redis_fallback count=${redisFallbackCount} rate-limit: Upstash Redis unreachable — failing open to in-memory limiting`,
         err instanceof Error ? err.message : String(err)
       );
     }

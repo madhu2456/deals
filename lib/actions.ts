@@ -11,6 +11,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
 import { absoluteUrl } from "@/lib/site";
+import { truncateAtSentence } from "@/lib/format";
 import { isAllowedLogoUrl, isSvgLogo } from "@/app/components/LogoImage";
 import type { CreateDealInput } from "@/lib/data";
 
@@ -106,12 +107,6 @@ async function verifyTurnstileToken(
   } catch {
     return false;
   }
-}
-
-/** Clip at a word boundary — avoids mid-word truncation in shortDescription. Appends … when truncated. */
-function truncateAtWord(text: string, max = 120): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max).replace(/\s+\S*$/, "") + "\u2026";
 }
 
 /** Returns null for empty (clear field), Date when valid, or false when invalid. */
@@ -298,7 +293,7 @@ export async function submitDealAction(formData: FormData) {
         dealUrl,
         categoryId,
         description,
-        shortDescription: truncateAtWord(description),
+        shortDescription: truncateAtSentence(description),
         discountType,
         discountValue: discountValue || null,
         couponCode: couponCode || null,
@@ -582,7 +577,7 @@ async function parseDealFormData(
     title,
     slug: "",
     description,
-    shortDescription: truncateAtWord(description),
+    shortDescription: truncateAtSentence(description),
     categoryId,
     brandName,
     brandUrl: brandUrl || undefined,

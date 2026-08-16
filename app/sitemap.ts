@@ -37,6 +37,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${site}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${site}/affiliate-disclosure`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
     // /submit is noindex,follow (utility form) — omit from sitemap
   ];
 

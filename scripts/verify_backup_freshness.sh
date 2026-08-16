@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# F011: fail if newest SQLite backup is older than MAX_AGE_HOURS (default 48).
+# F011: fail if newest SQLite backup is older than MAX_AGE_HOURS (default 26).
 # awk/date only — no python3 dependency (the node:22-bookworm-slim runner
 # image ships none, and this script runs inside the container for
 # named-volume deploys; see deploy.sh --install-backup-cron).
 set -euo pipefail
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/deals}"
-MAX_AGE_HOURS="${MAX_AGE_HOURS:-48}"
-BACKUP_GLOB="${BACKUP_GLOB:-*.db*}"
+MAX_AGE_HOURS="${MAX_AGE_HOURS:-26}"
+# Final published backups only — not *.db.tmp, LAST_SUCCESS, or sidecars.
+BACKUP_GLOB="${BACKUP_GLOB:-deals-*.db}"
 if [[ ! -d "$BACKUP_DIR" ]]; then
   echo "FAIL: backup dir missing: $BACKUP_DIR" >&2
   exit 2
 fi
-newest=$(find "$BACKUP_DIR" -type f -name "$BACKUP_GLOB" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 || true)
+newest=$(find "$BACKUP_DIR" -maxdepth 1 -type f -name "$BACKUP_GLOB" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 || true)
 if [[ -z "${newest:-}" ]]; then
   echo "FAIL: no backups matching $BACKUP_GLOB in $BACKUP_DIR" >&2
   exit 1

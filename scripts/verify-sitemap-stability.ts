@@ -8,7 +8,7 @@
  *
  * Checks:
  *  1. Static source guard on app/sitemap.ts: dynamic entries derive lastmod
- *     from DB fields; `lastModified: now` appears ONLY on the 3 static
+ *     from DB fields; `lastModified: now` appears ONLY on the static
  *     routes; no `lastModified: new Date()` churn pattern.
  *  2. DB-backed double-seed (temp DB copy — never the live DB): run the seed
  *     twice, derive the exact sitemap lastmod map (deals + categories) both
@@ -124,11 +124,19 @@ async function main(): Promise<void> {
     !/lastModified:\s*new Date\(\)/.test(sitemapSrc),
     "no `lastModified: new Date()` deploy-time churn pattern"
   );
-  // Exactly the 3 static routes may stamp `now`.
+  // Static routes may stamp `now` (home, /deals, /categories, /about, /affiliate-disclosure).
   assertEqual(
     (sitemapSrc.match(/lastModified:\s*now/g) ?? []).length,
-    3,
-    "`lastModified: now` appears only on the 3 static routes"
+    5,
+    "`lastModified: now` appears only on the 5 static routes"
+  );
+  assert(
+    sitemapSrc.includes("${site}/about"),
+    "sitemap staticRoutes includes /about"
+  );
+  assert(
+    sitemapSrc.includes("${site}/affiliate-disclosure"),
+    "sitemap staticRoutes includes /affiliate-disclosure"
   );
   assert(
     sitemapSrc.includes('dynamic = "force-dynamic"'),

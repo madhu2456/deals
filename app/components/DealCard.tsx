@@ -6,6 +6,7 @@ import { ArrowRight, Copy, Check, Calendar, Sparkles, Ticket } from "lucide-reac
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { contrastText } from "@/lib/contrast";
 import { discountLabel, formatRelativeDate } from "@/lib/format";
 import { trackCopyCoupon } from "@/lib/analytics";
 import type { PublicDeal } from "@/lib/data";
@@ -13,15 +14,6 @@ import { LogoImage } from "./LogoImage";
 
 interface DealCardProps {
   deal: PublicDeal;
-}
-
-/** Compute white or dark text based on background luminance (WCAG 1.4.3). */
-function textColorFor(bgColor: string): string {
-  const r = parseInt(bgColor.slice(1, 3), 16) / 255;
-  const g = parseInt(bgColor.slice(3, 5), 16) / 255;
-  const b = parseInt(bgColor.slice(5, 7), 16) / 255;
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.6 ? "#1e1b4b" : "#ffffff";
 }
 
 export function DealCard({ deal }: DealCardProps) {
@@ -56,6 +48,7 @@ export function DealCard({ deal }: DealCardProps) {
     expiryLabel === "Ends tomorrow" ||
     (typeof expiryLabel === "string" && expiryLabel.startsWith("Ends in"));
   const categoryColor = deal.category.color || "#6366F1";
+  const chipContrast = contrastText(categoryColor);
   const initials = deal.brandName.slice(0, 2).toUpperCase();
 
   return (
@@ -88,7 +81,10 @@ export function DealCard({ deal }: DealCardProps) {
             )}
             <span
               className="max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-medium"
-              style={{ backgroundColor: categoryColor, color: textColorFor(categoryColor) }}
+              style={{
+                backgroundColor: chipContrast.backgroundColor,
+                color: chipContrast.color,
+              }}
             >
               {deal.category.name}
             </span>
@@ -137,8 +133,8 @@ export function DealCard({ deal }: DealCardProps) {
               <span
                 className="flex h-full w-full items-center justify-center"
                 style={{
-                  background: `linear-gradient(145deg, ${categoryColor}, color-mix(in oklab, ${categoryColor} 55%, #1e1b4b))`,
-                  color: textColorFor(categoryColor),
+                  background: `linear-gradient(145deg, ${chipContrast.backgroundColor}, color-mix(in oklab, ${chipContrast.backgroundColor} 55%, #1e1b4b))`,
+                  color: chipContrast.color,
                 }}
               >
                 {initials}

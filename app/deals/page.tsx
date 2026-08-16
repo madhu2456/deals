@@ -91,22 +91,22 @@ export async function generateMetadata({
   });
 
   return {
-    title: "Browse Verified Deals & Coupon Codes",
+    title: "Browse Verified Software Deals",
     description:
-      "Search and filter verified deals, coupon codes, and exclusive discounts on software, SaaS tools, and products. Updated regularly.",
+      "Filter current software and SaaS deals. Validity can change; each page states how to claim.",
     alternates: { canonical },
     openGraph: {
-      title: "Browse Verified Deals & Coupon Codes",
+      title: "Browse Verified Software Deals",
       description:
-        "Search and filter verified deals, coupon codes, and exclusive discounts.",
+        "Filter current software and SaaS deals. Validity can change; each page states how to claim.",
       url: absoluteUrl(canonical),
       images: defaultOgImages(),
     },
     twitter: {
       card: "summary_large_image",
-      title: "Browse Verified Deals & Coupon Codes",
+      title: "Browse Verified Software Deals",
       description:
-        "Search and filter verified deals, coupon codes, and exclusive discounts.",
+        "Filter current software and SaaS deals. Validity can change; each page states how to claim.",
       images: [defaultOgImage()],
     },
   };
@@ -165,7 +165,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
       ? `${activeCategory.name} Deals`
       : search
         ? `Results for “${search}”`
-        : "All Deals";
+        : "All verified deals";
 
   return (
     <>
@@ -173,7 +173,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
         data={webPageSchema({
           title: pageTitle,
           description:
-            "Search and filter verified deals, coupon codes, and exclusive discounts.",
+            "Filter current software and SaaS deals. Validity can change; each page states how to claim.",
           path: canonicalPath,
           type: "CollectionPage",
         })}

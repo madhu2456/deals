@@ -19,7 +19,7 @@ import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
 import { LogoImage } from "../../components/LogoImage";
 import { getDealBySlug, getApprovedDeals } from "@/lib/data";
-import { formatDate, discountLabel } from "@/lib/format";
+import { formatDate, discountLabel, truncateAtSentence } from "@/lib/format";
 import {
   breadcrumbSchema,
   JsonLd,
@@ -69,10 +69,7 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
   }
 
   const rawDesc = deal.shortDescription || deal.description || "";
-  const description =
-    rawDesc.length <= 155
-      ? rawDesc
-      : rawDesc.slice(0, 155).replace(/\s+\S*$/, "") + "…";
+  const description = truncateAtSentence(rawDesc);
   // absolute: avoid layout template appending another " | Deals by Madhu Dadi"
   const title = dealDocumentTitle(deal.title);
   // Social can include brand without the full site suffix stacking
@@ -94,8 +91,9 @@ export async function generateMetadata({ params }: DealPageProps): Promise<Metad
       // deal openGraph is self-contained (F-XSITE-008).
       siteName: SITE_NAME,
       locale: "en_IN",
-      // Next Metadata OpenGraphType has no "product"; Product JSON-LD carries commerce type.
-      // Prefer merchant logo for social previews when present (matches Product.image).
+      // og:type=website is intentional: Next Metadata OpenGraphType has no "product".
+      // Product JSON-LD carries the commerce type. Prefer merchant logoUrl for
+      // social + Product.image; if null, use the site OG image — never icon-512.
       type: "website",
       images: deal.logoUrl
         ? [{ url: deal.logoUrl, alt: deal.brandName }]
@@ -278,7 +276,7 @@ export default async function DealPage({ params }: DealPageProps) {
                         </code>
                       </>
                     ) : null}
-                    . {deal.shortDescription || deal.description.slice(0, 160)}
+                    . {deal.shortDescription || truncateAtSentence(deal.description)}
                     {deal.expiryDate
                       ? ` Offer expires ${formatDate(deal.expiryDate)}.`
                       : ""}

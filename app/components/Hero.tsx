@@ -32,14 +32,13 @@ export function Hero({ dealCount, popularBrands }: HeroProps) {
           id="hero-heading"
           className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
         >
-          Verified deals &amp; coupon codes for{" "}
-          <span className="text-primary">everyone</span>
+          Verified software deals and coupon codes
         </h1>
 
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
           <strong className="font-semibold text-foreground">{SITE_NAME}</strong>
           {" "}
-          is a free, curated directory of verified discounts on software, SaaS tools, and products you already use. Reviewed offers only — no spam.
+          lists reviewed software and SaaS discounts. We check the claim path before listing; offers change, and we will not publish spam dumps. Confirm current steps on each deal page.
         </p>
 
         <form

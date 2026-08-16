@@ -31,7 +31,7 @@ export function buildCategoryIntro(input: CategoryIntroInput): {
 
   const lead =
     input.description?.trim() ||
-    `${SITE_NAME} lists verified ${name.toLowerCase()} deals, coupon codes, and exclusive offers. Every public listing is human-reviewed before it goes live.`;
+    `${SITE_NAME} lists verified ${name.toLowerCase()} deals and coupon codes. Every public listing is human-reviewed before it goes live.`;
 
   const body =
     count === 0

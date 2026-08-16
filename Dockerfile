@@ -24,9 +24,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time placeholders (real secrets come from runtime .env)
+# Build-time public config. NEXT_PUBLIC_* is inlined by Next at `pnpm build`.
+# Empty GTM id disables the client script (pass via compose build.args).
 ARG NEXT_PUBLIC_SITE_URL=https://deals.madhudadi.in
-ARG NEXT_PUBLIC_GTM_ID=GTM-PT2ZHD3W
+ARG NEXT_PUBLIC_GTM_ID
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_GTM_ID=$NEXT_PUBLIC_GTM_ID
 ENV DATABASE_URL="file:./build.db"

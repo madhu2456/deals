@@ -60,7 +60,7 @@ jobs:
           fi
           echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
 
-      # ── Test gate: ten fast gate steps BEFORE deploy ──
+      # ── Test gate: eleven fast gate steps BEFORE deploy ──
       # pnpm is pinned via the packageManager field (pnpm@9.15.9) using
       # pnpm/action-setup; the committed pnpm-lock.yaml enables a frozen install.
       # NOTE: `pnpm test:all` is NOT run here — it chains verify-content and
@@ -79,7 +79,8 @@ jobs:
       #   8. test:report-endpoint   — temp-DB report endpoint units (F-DEAL-006;
       #                              seeds the fresh DB when no dev.db is present)
       #   9. test:turnstile-config  — key parity + widget code path (F-DEAL-003)
-      #  10. tsc --noEmit           — type safety
+      #  10. test:gtm-env           — no shipped GTM-PT2ZHD3W; empty = no script (F048)
+      #  11. tsc --noEmit           — type safety
       # Tests must pass before anything deploys.
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -156,6 +157,11 @@ jobs:
       # presence only — never values.
       - name: Turnstile config parity + widget code path
         run: pnpm test:turnstile-config
+
+      # DB-free static guard: GTM-PT2ZHD3W stays out of app/lib/Dockerfile/
+      # .env.example, and empty NEXT_PUBLIC_GTM_ID returns no script/noscript.
+      - name: GTM env-only / empty=off
+        run: pnpm test:gtm-env
 
       - name: Type safety
         run: npx tsc --noEmit

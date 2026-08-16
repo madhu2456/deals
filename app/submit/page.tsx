@@ -8,7 +8,7 @@ import { absoluteUrl, defaultOgImages, SITE_NAME } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-const submitDescription = `Share a verified discount, promo code, or exclusive offer. Submissions are reviewed before they appear on ${SITE_NAME}.`;
+const submitDescription = `Share a verified discount, promo code, or offer. Submissions are reviewed before they appear on ${SITE_NAME}.`;
 
 export const metadata: Metadata = {
   title: "Submit a Deal or Coupon Code",

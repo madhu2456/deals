@@ -39,7 +39,7 @@ export default function AboutPage() {
           <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6">
             <p>
               <strong>{SITE_NAME}</strong> is a curated directory of verified
-              deals, coupon codes, and exclusive discounts on software, SaaS
+              deals, coupon codes, and reviewed discounts on software, SaaS
               tools, cloud services, design apps, learning platforms, and
               everyday products.
             </p>

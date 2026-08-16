@@ -58,7 +58,8 @@ export const DEFAULT_CATEGORIES = [
   {
     name: "Security & Privacy",
     slug: "security-and-privacy",
-    description: "VPNs, password managers, antivirus, and privacy services.",
+    description:
+      "Password-manager, VPN, and privacy-tool offers we have reviewed. Validity can change; confirm terms and how to claim on each deal page.",
     icon: "shield-check",
     color: "#14B8A6",
     sortOrder: 8,
@@ -98,3 +99,13 @@ export const DEFAULT_CATEGORIES = [
 ] as const;
 
 export type CategorySlug = (typeof DEFAULT_CATEGORIES)[number]["slug"];
+
+/** Unique owner for the generic “VPN deal” 0.3 query — never a Hidely slug. */
+export const SECURITY_AND_PRIVACY_SLUG = "security-and-privacy" as const;
+
+export const SECURITY_AND_PRIVACY_SEO = {
+  title: "Security & Privacy Software Deals",
+  h1: "Security and privacy deals",
+  description:
+    "Password-manager, VPN, and privacy-tool offers we have reviewed. Validity can change; confirm terms and how to claim on each deal page.",
+} as const;

@@ -11,6 +11,10 @@ import { DealGrid } from "../../components/DealGrid";
 import { EmptyState } from "../../components/EmptyState";
 import { buildCategoryIntro } from "@/lib/category-intro";
 import {
+  SECURITY_AND_PRIVACY_SEO,
+  SECURITY_AND_PRIVACY_SLUG,
+} from "@/lib/categories";
+import {
   countApprovedDealsInCategory,
   getCategoryBySlug,
   getApprovedDeals,
@@ -18,6 +22,7 @@ import {
   MIN_CATEGORY_DEALS_FOR_INDEX,
 } from "@/lib/data";
 import { iconMap } from "@/lib/icons";
+import { contrastText } from "@/lib/contrast";
 import {
   breadcrumbSchema,
   itemListSchema,
@@ -25,15 +30,6 @@ import {
   webPageSchema,
 } from "@/lib/seo/json-ld";
 import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
-
-/** Compute white or dark text based on background luminance (WCAG 1.4.3). */
-function textColorFor(bgColor: string): string {
-  const r = parseInt(bgColor.slice(1, 3), 16) / 255;
-  const g = parseInt(bgColor.slice(3, 5), 16) / 255;
-  const b = parseInt(bgColor.slice(5, 7), 16) / 255;
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.6 ? "#1e1b4b" : "#ffffff";
-}
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -53,10 +49,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const dealCount = await countApprovedDealsInCategory(category.slug);
   const indexable = dealCount >= MIN_CATEGORY_DEALS_FOR_INDEX;
 
-  const title = `${category.name} Deals & Discounts`;
-  const description =
-    category.description ||
-    `Verified ${category.name.toLowerCase()} deals, coupon codes, and exclusive discounts.`;
+  const isSecurity = category.slug === SECURITY_AND_PRIVACY_SLUG;
+  const title = isSecurity
+    ? SECURITY_AND_PRIVACY_SEO.title
+    : `${category.name} Deals & Discounts`;
+  const description = isSecurity
+    ? SECURITY_AND_PRIVACY_SEO.description
+    : category.description ||
+      `Verified ${category.name.toLowerCase()} deals and coupon codes. Validity can change; check each deal page.`;
   const path = `/categories/${category.slug}`;
 
   return {
@@ -103,9 +103,12 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const activeCategories = allCategories.filter((c) => c._count.deals > 0);
 
   const brandSource = brandDeals ?? deals;
+  const isSecurity = category.slug === SECURITY_AND_PRIVACY_SLUG;
   const intro = buildCategoryIntro({
     name: category.name,
-    description: category.description,
+    description: isSecurity
+      ? SECURITY_AND_PRIVACY_SEO.description
+      : category.description,
     dealCount: totalCount,
     brandNames: [
       ...new Set(
@@ -117,13 +120,16 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   });
 
   const Icon = iconMap[category.icon] ?? Tag;
+  const iconContrast = contrastText(category.color);
   const path = `/categories/${category.slug}`;
 
   return (
     <>
       <JsonLd
         data={webPageSchema({
-          title: `${category.name} Deals`,
+          title: isSecurity
+            ? SECURITY_AND_PRIVACY_SEO.h1
+            : `${category.name} Deals`,
           description: intro.lead,
           path,
           type: "CollectionPage",
@@ -168,16 +174,22 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             <div className="flex items-center gap-4">
               <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: category.color }}
+                style={{ backgroundColor: iconContrast.backgroundColor }}
               >
-                <Icon className="h-7 w-7" style={{ color: textColorFor(category.color) }} />
+                <Icon className="h-7 w-7" style={{ color: iconContrast.color }} />
               </div>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                  {category.name} Deals
+                  {isSecurity
+                    ? SECURITY_AND_PRIVACY_SEO.h1
+                    : `${category.name} Deals`}
                 </h1>
-                {category.description && (
-                  <p className="mt-1 max-w-2xl text-muted-foreground">{category.description}</p>
+                {(isSecurity || category.description) && (
+                  <p className="mt-1 max-w-2xl text-muted-foreground">
+                    {isSecurity
+                      ? SECURITY_AND_PRIVACY_SEO.description
+                      : category.description}
+                  </p>
                 )}
               </div>
             </div>

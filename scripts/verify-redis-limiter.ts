@@ -12,7 +12,7 @@
  *    across checkRateLimit calls, `deals:` namespace prefix present
  *  - garbage INCR counts → no throw, no silent bypass (memory fallback)
  */
-import { checkRateLimit } from "../lib/rate-limit";
+import { checkRateLimit, getRedisFallbackCount } from "../lib/rate-limit";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`FAIL: ${msg}`);
@@ -63,6 +63,7 @@ async function main() {
   try {
     restoreEnv();
     stubFetch(async () => new Response("should not be called", { status: 401 }));
+    const fallbackBefore = getRedisFallbackCount();
     const results: boolean[] = [];
     for (let i = 0; i < 6; i++) {
       results.push(
@@ -73,6 +74,10 @@ async function main() {
     assert(results[4] === false, "no-env call 5 allowed (at limit)");
     assert(results[5] === true, "no-env call 6 blocked");
     assert(fetchCalls.length === 0, "no-env path never calls fetch");
+    assert(
+      getRedisFallbackCount() === fallbackBefore,
+      "no-env memory path does not increment rl_redis_fallback"
+    );
   } finally {
     unstubFetch();
   }
@@ -82,10 +87,15 @@ async function main() {
     setEnv("https://upstash.example.com", "tok");
     stubFetch(() => Promise.reject(new TypeError("fetch failed")));
     warnCount = 0;
+    const fallbackBefore = getRedisFallbackCount();
     const r1 = await checkRateLimit({ key: "verify:net-reject", limit: 5, windowMs: 60_000 });
     const r2 = await checkRateLimit({ key: "verify:net-reject", limit: 5, windowMs: 60_000 });
     assert(!r1 && !r2, "network failure fails open (calls allowed)");
     assert(warnCount === 1, "network failure warns exactly once across calls");
+    assert(
+      getRedisFallbackCount() === fallbackBefore + 2,
+      "rl_redis_fallback increments on every Redis fail-open"
+    );
     for (let i = 0; i < 3; i++) {
       await checkRateLimit({ key: "verify:net-reject", limit: 5, windowMs: 60_000 });
     }
@@ -104,10 +114,15 @@ async function main() {
     setEnv("https://upstash.example.com", "tok");
     stubFetch(async () => new Response("Unauthorized", { status: 401 }));
     warnCount = 0;
+    const fallbackBefore = getRedisFallbackCount();
     const r1 = await checkRateLimit({ key: "verify:http-401", limit: 5, windowMs: 60_000 });
     const r2 = await checkRateLimit({ key: "verify:http-401", limit: 5, windowMs: 60_000 });
     assert(!r1 && !r2, "4xx fails open (calls allowed)");
     assert(warnCount === 2, "4xx misconfig warns on EVERY call (even after warnedOnce)");
+    assert(
+      getRedisFallbackCount() === fallbackBefore + 2,
+      "rl_redis_fallback increments on every 4xx fail-open"
+    );
     for (let i = 0; i < 3; i++) {
       await checkRateLimit({ key: "verify:http-401", limit: 5, windowMs: 60_000 });
     }
@@ -166,12 +181,17 @@ async function main() {
       });
     });
 
+    const fallbackBefore = getRedisFallbackCount();
     const calls: boolean[] = [];
     for (let i = 0; i < 3; i++) {
       calls.push(
         await checkRateLimit({ key: "verify:shared", limit: 2, windowMs: 60_000 })
       );
     }
+    assert(
+      getRedisFallbackCount() === fallbackBefore,
+      "successful Upstash path does not increment rl_redis_fallback"
+    );
     assert(calls[0] === false, "shared bucket call 1 allowed (count 1)");
     assert(calls[1] === false, "shared bucket call 2 allowed (count 2 shared)");
     assert(calls[2] === true, "shared bucket call 3 blocked (count 3 > limit 2)");

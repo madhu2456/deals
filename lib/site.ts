@@ -37,7 +37,7 @@ export function defaultOgImages() {
 }
 
 export const SITE_DESCRIPTION =
-  "Find verified deals, coupon codes, and exclusive discounts on software, SaaS tools, cloud hosting, design apps, and everyday products. Curated offers updated regularly — no spam.";
+  "Curated, reviewed discounts on software, SaaS, and apps. Small catalog, no spam dumps. Offers change; confirm on each deal page.";
 
 export const SITE_KEYWORDS = [
   "deals",
@@ -48,7 +48,6 @@ export const SITE_KEYWORDS = [
   "software discounts",
   "verified coupons",
   "tool discounts",
-  "exclusive offers",
 ];
 
 /** Creator / publisher entity for E-E-A-T */

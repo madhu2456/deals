@@ -11,6 +11,17 @@ Operational runbook for the Deals app database.
 
 Scripts resolve the path from `DATABASE_URL` when set, otherwise fall back to `/app/data/deals.db` (container) or `prisma/dev.db` (local).
 
+## Production host layout (as of 2026-08-16)
+
+On the production single host (Netcup/DO box), Deals and Enroller share the box.
+
+- Live DB: Docker **named volume** `deals_data` (`deals_deals_data`). There is **no** `/opt/deals/data`.
+- Backups: host `/var/backups/deals`. Cron copies from the volume `_data` file (`…/deals_deals_data/_data/deals.db`).
+- F011 last-success **proven** ~2026-08-16T07:39:19Z: newest `/var/backups/deals/deals-20260816T011501Z.db`, age **6.405 h**, `PRAGMA integrity_check=ok`, explicit `MAX_AGE_HOURS=26` freshness exit 0. Cron present (2026-08-15). Restore **not** run.
+- Host `LAST_SUCCESS` stamp files are **absent** (deployed scripts predate the local stamp patch). Proof is newest-file mtime + integrity + freshness.
+- Host freshness script default is still **48 h** until new scripts deploy; the 26 h check above was explicit.
+- Documented `deploy.sh --install-backup-cron` does **not** match this host (it would target in-volume `/app/data/backups` or missing `/opt/deals/data`). **Do not** run it blindly — leave the working `_data` → `/var/backups/deals` cron in place.
+
 ## Prerequisites
 
 - `sqlite3` CLI installed on the host or in the container
@@ -33,11 +44,15 @@ docker compose exec deals sh -c 'DATABASE_URL=file:/app/data/deals.db /app/scrip
 What the script does:
 
 1. Resolves the live DB path
-2. Runs `sqlite3 … .backup` into `BACKUP_DIR` (default: `/var/backups/deals`
-   when writable — the same default `verify_backup_freshness.sh` watches;
-   container fallback `/app/data/backups`, local dev `<repo>/backups`)
-3. Runs `PRAGMA integrity_check` on the **backup file** (must return `ok`)
-4. Deletes `*-YYYYMMDD….db` backups older than **14 days** (`RETENTION_DAYS`)
+2. Runs `sqlite3 … .backup` into a `.tmp` file under `BACKUP_DIR` (default:
+   `/var/backups/deals` when writable — the same default
+   `verify_backup_freshness.sh` watches; container fallback `/app/data/backups`,
+   local dev `<repo>/backups`)
+3. Runs `PRAGMA integrity_check` on the **tmp copy** (must return `ok`), then
+   `mv` to the final `deals-*.db` (a killed write never leaves a partial final `*.db`)
+4. Writes `LAST_SUCCESS` in the same `BACKUP_DIR` (ISO-8601 UTC + backup path)
+   only after that `mv`
+5. Deletes `*-YYYYMMDD….db` backups older than **14 days** (`RETENTION_DAYS`)
 
 Env overrides: `DATABASE_URL`, `BACKUP_DIR`, `RETENTION_DAYS`.
 
@@ -45,7 +60,9 @@ Env overrides: `DATABASE_URL`, `BACKUP_DIR`, `RETENTION_DAYS`.
 
 `deploy.sh --install-backup-cron` installs both crontab entries idempotently
 (re-runs replace, never duplicate) and auto-detects the deployment type from
-`docker-compose.yml`:
+`docker-compose.yml`. **Do not** run that installer blindly on the 2026-08-16
+production host — see **Production host layout** above; the live cron already
+backs up the named-volume `_data` file to `/var/backups/deals`.
 
 **Bind-mount deployment** (`/app/data` on a host path) — plain host entries run
 the scripts directly against `/opt/deals/data/deals.db` (override with
@@ -54,7 +71,7 @@ the scripts directly against `/opt/deals/data/deals.db` (override with
 | Time (UTC) | Entry | Purpose |
 |------------|-------|---------|
 | 03:15 daily | `backup-sqlite.sh` → `BACKUP_DIR=/var/backups/deals` | integrity-checked backup, 14-day retention |
-| 03:45 daily | `verify_backup_freshness.sh` → `BACKUP_DIR=/var/backups/deals` | fails (non-zero) if newest backup is > 48 h old |
+| 03:45 daily | `verify_backup_freshness.sh` → `BACKUP_DIR=/var/backups/deals MAX_AGE_HOURS=26` | fails (non-zero) if newest backup is > 26 h old |
 
 **Named-volume deployment** (compose mounts `deals_data:/app/data`) — the live
 DB is not reachable from the host, so the install switches to container
@@ -64,7 +81,7 @@ against `/app/data` (DB + backups live in the named volume):
 ```cron
 # Example: daily 03:15 UTC, retain 14 days (script default)
 15 3 * * * cd /opt/deals && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1
-45 3 * * * cd /opt/deals && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd /opt/deals && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups MAX_AGE_HOURS=26 /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
 ```
 
 Logs: `/var/log/deals-backup.log`. Backups inside a named volume are not

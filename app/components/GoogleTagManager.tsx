@@ -3,9 +3,8 @@
 import Script from "next/script";
 import { useCookieConsent } from "./CookieConsent";
 
-/** Default container; override with NEXT_PUBLIC_GTM_ID */
-export const GTM_ID =
-  process.env.NEXT_PUBLIC_GTM_ID?.trim() || "GTM-PT2ZHD3W";
+/** Env-only container; empty/unset disables GTM. */
+export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID?.trim() || "";
 
 /**
  * GTM script — loads only after cookie consent is explicitly accepted.

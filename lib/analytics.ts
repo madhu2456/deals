@@ -1,6 +1,6 @@
 /**
- * dataLayer helpers for Google Tag Manager (GTM-PT2ZHD3W).
- * Fire custom events that GTM maps to GA4 (G-THQ1ZPJ4B7).
+ * dataLayer helpers for Google Tag Manager (NEXT_PUBLIC_GTM_ID).
+ * Fire custom events that GTM maps to GA4.
  */
 
 export type DataLayerEvent = {

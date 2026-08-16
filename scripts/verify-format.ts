@@ -2,7 +2,7 @@
  * Smoke-test format helpers used across deal pages + lists.
  * Run: pnpm exec tsx scripts/verify-format.ts
  */
-import { formatDate, formatRelativeDate, discountLabel, statusColor } from "../lib/format";
+import { formatDate, formatRelativeDate, discountLabel, statusColor, truncateAtSentence } from "../lib/format";
 import { SITE_LANGUAGE } from "../lib/site";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -87,4 +87,25 @@ assert(statusColor("FOO").length > 0, "unknown status returns default");
 // ── SITE_LANGUAGE ──
 assert(SITE_LANGUAGE === "en-IN", "site language en-IN");
 
-console.log("OK: format helpers verified (date, relative, discount, status)");
+// ── truncateAtSentence (deal meta / CMS shortDescription) ──
+const twoSentences =
+  "First complete sentence. Second complete sentence that would exceed a short cap.";
+assert(
+  truncateAtSentence(twoSentences, 30) === "First complete sentence.",
+  "keeps the last full sentence that fits"
+);
+assert(
+  truncateAtSentence("Only one long clause without a terminator that goes on", 20) ===
+    "Only one long clause without a terminator that goes on",
+  "does not mid-clause slice when there is no terminator"
+);
+const longFirst =
+  "This first sentence is intentionally longer than the display cap so we keep it whole.";
+assert(
+  truncateAtSentence(longFirst, 40) === longFirst,
+  "keeps a long first sentence intact"
+);
+assert(truncateAtSentence("  hi.  ", 160) === "hi.", "trims whitespace");
+assert(truncateAtSentence("", 160) === "", "empty stays empty");
+
+console.log("OK: format helpers verified (date, relative, discount, status, sentence)");

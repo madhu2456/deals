@@ -109,6 +109,9 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 ADMIN_SECRET="${ADMIN_SECRET}"
 NEXT_PUBLIC_SITE_URL="https://${DOMAIN}"
 APP_PORT=${APP_PORT}
+# Empty disables GTM. Compose interpolates this as a build arg (Next inlines
+# NEXT_PUBLIC_* at image build). Set the container ID on the host to enable.
+NEXT_PUBLIC_GTM_ID=
 # First-time provisioning only: flipped to false after the first container
 # start (see flip_seed_flag). Routine --update deploys never re-enable seeding.
 RUN_SEED=true
@@ -126,6 +129,10 @@ EOF
       sed -i "s/^APP_PORT=.*/APP_PORT=${APP_PORT}/" "${APP_DIR}/.env"
     else
       echo "APP_PORT=${APP_PORT}" >>"${APP_DIR}/.env"
+    fi
+    # Placeholder only when missing — never overwrite a host-set container ID.
+    if ! grep -q '^NEXT_PUBLIC_GTM_ID=' "${APP_DIR}/.env" 2>/dev/null; then
+      echo "NEXT_PUBLIC_GTM_ID=" >>"${APP_DIR}/.env"
     fi
   fi
 }
@@ -232,14 +239,14 @@ install_backup_cron() {
 # deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC; container exec)
 15 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1
 # deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC; container exec)
-45 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups MAX_AGE_HOURS=26 /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
 EOF
   else
     cat >>"${tmp}" <<EOF
 # deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC)
 15 3 * * * cd ${APP_DIR} && DATABASE_URL=${db_url} BACKUP_DIR=${backup_dir} ./scripts/backup-sqlite.sh >>/var/log/deals-backup.log 2>&1
 # deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC)
-45 3 * * * cd ${APP_DIR} && BACKUP_DIR=${backup_dir} ./scripts/verify_backup_freshness.sh >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd ${APP_DIR} && BACKUP_DIR=${backup_dir} MAX_AGE_HOURS=26 ./scripts/verify_backup_freshness.sh >>/var/log/deals-backup.log 2>&1
 EOF
   fi
   if ! crontab "${tmp}"; then

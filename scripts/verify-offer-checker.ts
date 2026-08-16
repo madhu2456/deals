@@ -157,6 +157,15 @@ async function main(): Promise<void> {
     );
   }
 
+  assert(
+    /const categoryLines = indexableCategories/.test(llms),
+    "llms.txt category links come from indexableCategories only"
+  );
+  assert(
+    !/const categoryLines = activeCategories/.test(llms),
+    "llms.txt does not link active (possibly noindex) categories"
+  );
+
   assert(/reviewed for clarity and terms/i.test(jsonld), "HOME_FAQS has new review wording");
   assert(/reviewed for clarity and terms/i.test(about), "About page has new review wording");
   assert(

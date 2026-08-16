@@ -32,8 +32,7 @@ import {
 // Runtime data from SQLite — do not prerender at Docker build time
 export const dynamic = "force-dynamic";
 
-// ~48 chars — keep absolute titles in the ~50–60 char SEO range
-const HOME_TITLE = `Verified Deals & Coupons | ${SITE_NAME}`;
+const HOME_TITLE = `Verified Software Deals & Coupons | ${SITE_NAME}`;
 
 export const metadata: Metadata = {
   title: {
@@ -115,14 +114,14 @@ export default async function HomePage() {
             </h2>
             <p className="mt-3 text-pretty text-base leading-relaxed text-muted-foreground">
               <strong className="font-semibold text-foreground">{SITE_NAME}</strong> is
-              a free, curated directory of verified discounts, coupon codes, and
-              exclusive offers on software, SaaS tools, cloud services, design
-              apps, courses, and everyday products. Every public listing is
-              reviewed before it goes live — so you can search, filter by
-              category, and claim offers with confidence.
+              a curated directory of verified software and SaaS discounts. A
+              human reviews each listing for a live claim path and clear terms
+              before it is published. We update the catalog as offers change
+              and we will not list scraped coupon dumps or spam. Confirm the
+              current steps on the deal page and on the merchant site.
             </p>
             <ul className="mt-4 list-inside list-disc space-y-1.5 text-sm text-muted-foreground">
-              <li>Browse {totalDeals}+ verified offers across {activeCategories.length} categories</li>
+              <li>Reviewed software and SaaS offers across {activeCategories.length} categories</li>
               <li>Copy coupon codes and open merchant links in one click</li>
               <li>Submit deals you find — we moderate before publishing</li>
             </ul>

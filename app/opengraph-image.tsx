@@ -81,8 +81,7 @@ export default function OpenGraphImage() {
             lineHeight: 1.4,
           }}
         >
-          Verified coupons, discounts &amp; exclusive offers on software, SaaS,
-          and more
+          Reviewed software and SaaS discounts — small catalog, no spam dumps
         </div>
 
         {/* Domain */}
