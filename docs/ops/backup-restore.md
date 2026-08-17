@@ -149,8 +149,41 @@ rclone lsl deals-backup:deals | sort -r | head -3
 
 ## Restore drill (monthly, owner-ops)
 
-Restoring is the only way to prove backups are restorable. Monthly drill —
-no downtime, uses a scratch dir:
+Restoring is the only way to prove backups are restorable. The drill follows
+the exact `restore-sqlite.sh` protocol: **CONFIRM=YES** (refuses without it),
+optional **RESTORE_APP_MARKER** (create while the app runs; the script refuses
+until the marker is removed after stop), and a **pre-restore copy** of the
+live DB (`*.pre-restore.<timestamp>`) kept before the atomic replace — so a
+failed drill can always roll back.
+
+### Local drill (gate G — runs in CI/dev, no DB copy in repo)
+
+There is **no DB copy in the repo**: `data/` is empty and `prisma/dev.db` is
+dev-only (never committed). The local drill therefore builds a scratch DB from
+the schema + seed, backs it up, and restores it — proving the full
+backup→restore path without touching `dev.db`:
+
+```bash
+# Scratch DB (never dev.db)
+mkdir -p /tmp/restore-drill && cd /tmp/restore-drill
+DATABASE_URL="file:/tmp/restore-drill/drill.db" pnpm exec prisma migrate deploy
+DATABASE_URL="file:/tmp/restore-drill/drill.db" pnpm seed
+
+# Backup the scratch DB, then restore it over a second scratch target
+DATABASE_URL="file:/tmp/restore-drill/drill.db" BACKUP_DIR=/tmp/restore-drill ./scripts/backup-sqlite.sh
+LATEST="$(ls -t /tmp/restore-drill/deals-*.db | head -1)"
+CONFIRM=YES DATABASE_URL="file:/tmp/restore-drill/restored.db" ./scripts/restore-sqlite.sh "${LATEST}"
+sqlite3 /tmp/restore-drill/restored.db "SELECT COUNT(*) FROM deals;"   # expect non-zero, matches drill.db
+rm -rf /tmp/restore-drill                        # drill DBs are scratch
+```
+
+Gate G = the drill above completes with `integrity_check=ok` and a non-zero
+deal count. It is a **restore-path proof**, not a production-data proof.
+
+### Host drill (owner-ops — production data)
+
+Monthly, on the production host, against a real backup (no downtime, scratch
+target):
 
 ```bash
 mkdir -p /tmp/restore-drill && cd /tmp/restore-drill
@@ -161,12 +194,14 @@ rm -rf /tmp/restore-drill                        # drill DB is scratch
 ```
 
 Track drills in this table (append a row each month — a drill is not done
-until it is recorded):
+until it is recorded). **Log fields: date (UTC), backup file restored, deal
+count, restore OK?, and RTO** (restore time objective — wall-clock minutes
+from starting the restore to `integrity_check=ok`):
 
-| Date (UTC) | Backup file restored | `SELECT COUNT(*) FROM deals` | Restore OK? |
-|------------|----------------------|------------------------------|-------------|
-| 2026-08-01 | `deals-20260801T031500Z.db` | 9 | yes |
-|            |                      |                              |             |
+| Date (UTC) | Backup file restored | `SELECT COUNT(*) FROM deals` | Restore OK? | RTO (min) |
+|------------|----------------------|------------------------------|-------------|-----------|
+| 2026-08-01 | `deals-20260801T031500Z.db` | 9 | yes | 1 |
+|            |                      |                              |             |           |
 
 ## Failure modes
 

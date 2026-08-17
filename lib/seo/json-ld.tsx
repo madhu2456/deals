@@ -134,6 +134,13 @@ export function itemListSchema({
     path: string;
     description?: string | null;
     image?: string | null;
+    /** Offer facts from dealOfferFacts — same data source as the Offer schema (F240). */
+    offer?: {
+      price: string | number | null;
+      priceCurrency?: string | null;
+      availability: string;
+      validThrough?: string | null;
+    } | null;
   }[];
 }) {
   return {
@@ -150,6 +157,26 @@ export function itemListSchema({
       url: absoluteUrl(item.path),
       ...(item.description ? { description: item.description } : {}),
       ...(item.image ? { image: item.image } : {}),
+      // Price + availability per listing item (F240): derived from the same
+      // deal data as the deal-page Offer schema so the listing and the page
+      // never disagree. Emitted as `item` (an Offer) — the ListItem-level
+      // offer facts are omitted when the deal has no parseable price.
+      ...(item.offer
+        ? {
+            item: {
+              "@type": "Offer",
+              name: item.name,
+              url: absoluteUrl(item.path),
+              ...(item.offer.price !== null
+                ? { price: item.offer.price, priceCurrency: item.offer.priceCurrency ?? "USD" }
+                : {}),
+              availability: item.offer.availability,
+              ...(item.offer.validThrough
+                ? { validThrough: item.offer.validThrough }
+                : {}),
+            },
+          }
+        : {}),
     })),
   };
 }
@@ -196,6 +223,53 @@ function detectCurrency(strings: (string | null | undefined)[]): string {
   return "USD";
 }
 
+/**
+ * Offer facts (price, currency, availability, expiry) shared by the
+ * Product/Offer schema and ItemList item offers (F240). ItemList must derive
+ * price + availability from the SAME deal data as the Offer schema so the
+ * listing and the deal page never disagree.
+ *
+ * Perpetual deals (no expiryDate) keep `availability: InStock` with NO
+ * `validThrough` — they have no end date, and schema.org has no
+ * "no end date" value. This is a deliberate, documented policy (F234), not a
+ * silent stale flag: `InStock` means "approved and listed, no known expiry"
+ * on THIS site; merchant-side availability is monitored separately by
+ * scripts/check-offer-validity.ts (daily cron) and admin review. Dated deals
+ * past their expiry emit OutOfStock.
+ */
+export function dealOfferFacts(deal: {
+  discountedPrice?: string | null;
+  originalPrice?: string | null;
+  discountValue?: string | null;
+  discountType: string;
+  expiryDate?: Date | string | null;
+}) {
+  const strict = parseStrictPrice(deal.discountedPrice);
+  const isFreeTier = deal.discountType === "FREE_TIER";
+  const currency = detectCurrency([deal.discountedPrice, deal.originalPrice, deal.discountValue]);
+  // FREE_TIER wins over any parseable string (admin mistakes can't fabricate a price on a free deal).
+  const priceValue: string | number | null = isFreeTier ? "0" : strict.price;
+  const availability = deal.expiryDate
+    ? new Date(deal.expiryDate) < new Date()
+      ? "https://schema.org/OutOfStock"
+      : "https://schema.org/InStock"
+    : "https://schema.org/InStock";
+  // validThrough ONLY when the deal has an expiry date (F234): emitting one
+  // for perpetual deals would falsely claim the offer ends.
+  const validThrough = deal.expiryDate
+    ? typeof deal.expiryDate === "string"
+      ? deal.expiryDate
+      : deal.expiryDate.toISOString()
+    : null;
+  return {
+    price: priceValue,
+    priceCurrency: currency,
+    isMonthly: strict.isMonthly,
+    availability,
+    validThrough,
+  };
+}
+
 export function offerSchema(deal: {
   title: string;
   slug: string;
@@ -216,21 +290,15 @@ export function offerSchema(deal: {
   category: { name: string; slug: string };
 }) {
   const url = absoluteUrl(`/deals/${deal.slug}`);
-  const availability = deal.expiryDate
-    ? new Date(deal.expiryDate) < new Date()
-      ? "https://schema.org/OutOfStock"
-      : "https://schema.org/InStock"
-    : "https://schema.org/InStock";
+  const facts = dealOfferFacts(deal);
+  const availability = facts.availability;
 
-  // ── Price extraction ──────────────────────────────────
-  const strict = parseStrictPrice(deal.discountedPrice);
-  const isFreeTier = deal.discountType === "FREE_TIER";
-  const currency = detectCurrency([deal.discountedPrice, deal.originalPrice, deal.discountValue]);
-  // FREE_TIER wins over any parseable string (admin mistakes can't fabricate a price on a free deal).
-  const priceValue: string | number | null = isFreeTier ? "0" : strict.price;
+  // ── Price extraction (shared with ItemList via dealOfferFacts) ─────────
+  const priceValue = facts.price;
   const hasPrice = priceValue !== null;
+  const currency = facts.priceCurrency;
   // Monthly billing signal ONLY for real (non-free) prices, derived ONLY from the discountedPrice match.
-  const billingDuration = hasPrice && !isFreeTier && strict.isMonthly ? "P1M" : null;
+  const billingDuration = hasPrice && !(deal.discountType === "FREE_TIER") && facts.isMonthly ? "P1M" : null;
 
   const offer: Record<string, unknown> = {
     "@type": "Offer",
@@ -298,14 +366,9 @@ export function offerSchema(deal: {
           },
         }
       : {}),
-    ...(deal.expiryDate
-      ? {
-          validThrough:
-            typeof deal.expiryDate === "string"
-              ? deal.expiryDate
-              : deal.expiryDate.toISOString(),
-        }
-      : {}),
+    // validThrough ONLY for dated deals (F234): perpetual deals stay
+    // InStock-without-validThrough (see dealOfferFacts policy comment).
+    ...(facts.validThrough ? { validThrough: facts.validThrough } : {}),
   };
 
   // Product + Offer is widely understood by Google & AI extractors

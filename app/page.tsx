@@ -16,6 +16,7 @@ import {
   getPopularBrandNames,
 } from "@/lib/data";
 import {
+  dealOfferFacts,
   faqSchema,
   HOME_FAQS,
   itemListSchema,
@@ -72,6 +73,8 @@ export default async function HomePage() {
     path: `/deals/${d.slug}`,
     description: d.shortDescription || d.description,
     image: d.logoUrl,
+    // Same data source as the deal-page Offer schema (F240).
+    offer: dealOfferFacts(d),
   }));
 
   return (

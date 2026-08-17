@@ -16,13 +16,16 @@
  *  - Scope: status=APPROVED deals — the public offer surface. PENDING,
  *    REJECTED and EXPIRED rows are admin-lifecycle states and are left alone.
  *
- * Intended host cron (deploy-time ops — deliberately NOT wired into the repo):
+ * Intended host cron (F231 — install via deploy.sh, host install = owner-ops):
+ *   cd /opt/deals && ./deploy.sh --install-offer-checker-cron
+ * Installs (idempotent, non-root) the daily 04:00 UTC entry:
  *   0 4 * * * cd /opt/deals && docker compose exec -T deals sh -c 'cd /app && ./node_modules/.bin/tsx scripts/check-offer-validity.ts' >>/var/log/deals-offer-check.log 2>&1
- * (daily 04:00 UTC; compose service name is "deals" — see docker-compose.yml.
- *  Output is cron-compatible: JSON report on stdout, exit 0 = nothing to do,
- *  exit 1 = findings (expired deals and/or broken offer URLs needing admin
- *  review). The redirect keeps the report in /var/log/deals-offer-check.log
- *  and cron sees the non-zero exit (default MAILTO alert).)
+ * (compose service name is "deals" — see docker-compose.yml. Output is
+ *  cron-compatible: JSON report on stdout, exit 0 = nothing to do, exit 1 =
+ *  findings (expired deals and/or broken offer URLs needing admin review).
+ *  The redirect keeps the report in /var/log/deals-offer-check.log and the
+ *  installer appends an alert echo on non-zero exit, which cron mails to
+ *  MAILTO (default: crontab owner; override OFFER_CHECK_MAILTO).)
  *
  * Run: pnpm check:offers
  */

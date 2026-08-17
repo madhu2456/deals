@@ -124,7 +124,7 @@ async function main(): Promise<void> {
   const repoRoot = join(__dirname, "..");
   const jsonld = readFileSync(join(repoRoot, "lib", "seo", "json-ld.tsx"), "utf8");
   const about = readFileSync(join(repoRoot, "app", "about", "page.tsx"), "utf8");
-  const llms = readFileSync(join(repoRoot, "app", "llms.txt", "route.ts"), "utf8");
+  const llms = readFileSync(join(repoRoot, "lib", "llms-body.ts"), "utf8");
   const aiProfile = readFileSync(join(repoRoot, "app", "ai-profile.json", "route.ts"), "utf8");
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
   const siteLib = readFileSync(join(repoRoot, "lib", "site.ts"), "utf8");
@@ -135,7 +135,7 @@ async function main(): Promise<void> {
   const surfaces: Array<[string, string]> = [
     ["lib/seo/json-ld.tsx", jsonld],
     ["app/about/page.tsx", about],
-    ["app/llms.txt/route.ts", llms],
+    ["lib/llms-body.ts", llms],
     ["app/ai-profile.json/route.ts", aiProfile],
     ["README.md", readme],
     ["lib/site.ts", siteLib],

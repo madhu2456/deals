@@ -66,3 +66,11 @@ export const SEO_PARTNER = {
   url: "https://adticks.com",
   description: "SEO & GEO optimization",
 };
+
+/**
+ * Stable lastmod for static sitemap entries (/, /deals, /categories, /about,
+ * /affiliate-disclosure). These pages change only when repo content changes,
+ * so a constant beats a generation-time clock stamp: the sitemap must never
+ * report "modified just now" (F236). Bump this when static copy changes.
+ */
+export const SITE_STATIC_LAST_MODIFIED = "2026-08-16T00:00:00.000Z";

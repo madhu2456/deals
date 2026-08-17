@@ -4,19 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  next: 16.2.12
-  nanoid: ^3.3.17
-  postcss: ^8.5.23
-  sharp: '>=0.35.0'
-  js-yaml: ^4.3.1
-  undici: ^7.29.0
-  fast-uri: ^3.1.5
-  ip-address: ^10.3.1
-  brace-expansion@^5.0.0: ^5.0.9
-  hono: ^4.12.34
-  '@hono/node-server': ^2.0.5
-
 importers:
 
   .:

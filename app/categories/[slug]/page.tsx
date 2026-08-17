@@ -25,6 +25,7 @@ import { iconMap } from "@/lib/icons";
 import { contrastText } from "@/lib/contrast";
 import {
   breadcrumbSchema,
+  dealOfferFacts,
   itemListSchema,
   JsonLd,
   webPageSchema,
@@ -152,6 +153,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
               name: d.title,
               path: `/deals/${d.slug}`,
               description: d.shortDescription || d.description,
+              // Same data source as the deal-page Offer schema (F240).
+              offer: dealOfferFacts(d),
             })),
           })}
         />

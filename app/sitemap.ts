@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { MIN_CATEGORY_DEALS_FOR_INDEX } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
-import { getSiteUrl } from "@/lib/site";
+import { getSiteUrl, SITE_STATIC_LAST_MODIFIED } from "@/lib/site";
 
 /**
  * Regenerated per request: `dynamic = "force-dynamic"` disables ISR, so the
@@ -16,36 +16,39 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl();
-  const now = new Date();
+  const currentTime = new Date();
 
+  // Static routes use a STABLE content date (SITE_STATIC_LAST_MODIFIED), never
+  // the generation clock (F236): two fetches seconds apart must produce
+  // byte-identical lastmods. Deal/category rows use DB columns below.
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: site,
-      lastModified: now,
+      lastModified: SITE_STATIC_LAST_MODIFIED,
       changeFrequency: "daily",
       priority: 1,
     },
     {
       url: `${site}/deals`,
-      lastModified: now,
+      lastModified: SITE_STATIC_LAST_MODIFIED,
       changeFrequency: "hourly",
       priority: 0.95,
     },
     {
       url: `${site}/categories`,
-      lastModified: now,
+      lastModified: SITE_STATIC_LAST_MODIFIED,
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${site}/about`,
-      lastModified: now,
+      lastModified: SITE_STATIC_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${site}/affiliate-disclosure`,
-      lastModified: now,
+      lastModified: SITE_STATIC_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.4,
     },
@@ -55,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const approvedNotExpired = {
       status: "APPROVED" as const,
-      OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
+      OR: [{ expiryDate: null }, { expiryDate: { gt: currentTime } }],
     };
 
     const [categories, deals] = await Promise.all([
@@ -93,14 +96,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((c) => c._count.deals >= MIN_CATEGORY_DEALS_FOR_INDEX)
       .map((c) => ({
         url: `${site}/categories/${c.slug}`,
-        lastModified: c.updatedAt ?? now,
+        // updatedAt is non-nullable in the schema — a clock fallback would
+        // reintroduce the deploy-time restamp (F236).
+        lastModified: c.updatedAt,
         changeFrequency: "daily" as const,
         priority: 0.85,
       }));
 
     const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
       url: `${site}/deals/${d.slug}`,
-      lastModified: d.updatedAt || d.approvedAt || now,
+      // DB columns only (updatedAt || approvedAt) — never the clock (F236).
+      lastModified: d.updatedAt || d.approvedAt,
       changeFrequency: "weekly" as const,
       priority: 0.75,
     }));

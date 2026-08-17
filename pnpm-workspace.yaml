@@ -11,8 +11,9 @@ onlyBuiltDependencies:
   - sharp
   - unrs-resolver
 
-# pnpm >= 10 reads overrides from this file (package.json pnpm.overrides is ignored).
-# Mirror of the package.json pnpm.overrides block so both pnpm 9 and pnpm 10/11 apply them.
+# pnpm >= 10 reads overrides from this file; single source of truth (F243).
+# package.json must NOT carry a pnpm.overrides block (pnpm 11 ignores it,
+# causing future-drift risk — the lockfile would silently lose the pins).
 overrides:
   next: 16.2.12
   nanoid: ^3.3.17

@@ -68,14 +68,45 @@ export default function PrivacyPage() {
               review their privacy policies before sharing personal data.
             </p>
 
-            <h2>5. Data retention</h2>
+            <h2>5. Subprocessors</h2>
+            <p>
+              We use the following subprocessors to operate and protect this site.
+              Each processes data only for the purpose stated; none may use it for
+              their own purposes.
+            </p>
+            <ul>
+              <li>
+                <strong>Cloudflare</strong> — content delivery network and proxy
+                (serves pages and images; processes IP addresses in connection logs
+                for security and DDoS/WAF protection).
+              </li>
+              <li>
+                <strong>Cloudflare Turnstile</strong> — bot protection on the deal
+                submission form, only when enabled (see the Turnstile section of the
+                README). Processes the visitor&apos;s IP and browser signals to verify the
+                visitor is human.
+              </li>
+              <li>
+                <strong>Google</strong> — analytics (Google Analytics) loaded only
+                after you accept the cookie consent banner, and Google Search Console
+                for site-indexing verification. Web fonts are self-hosted; no Google
+                Fonts requests are made.
+              </li>
+              <li>
+                <strong>Upstash</strong> — shared rate-limit buckets across instances,
+                only if the operator configures Upstash Redis (absent by default; the
+                site then uses in-memory limiting).
+              </li>
+            </ul>
+
+            <h2>6. Data retention</h2>
             <p>
               Deal submissions and associated metadata are retained as long as the
               deal remains published. You can request deletion of your submission data
               by contacting us.
             </p>
 
-            <h2>6. India DPDP notice (Data Fiduciary)</h2>
+            <h2>7. India DPDP notice (Data Fiduciary)</h2>
             <p>
               Where the Digital Personal Data Protection Act, 2023 (DPDP Act) of India
               applies, the operator of {SITE_NAME} acts as a{" "}
@@ -87,7 +118,7 @@ export default function PrivacyPage() {
               applicable rights or raise a privacy concern.
             </p>
 
-            <h2>7. Contact</h2>
+            <h2>8. Contact</h2>
             <p>
               For privacy-related inquiries, contact{" "}
               <a

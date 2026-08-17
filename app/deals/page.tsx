@@ -24,7 +24,12 @@ import {
   type PublicDeal,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { itemListSchema, JsonLd, webPageSchema } from "@/lib/seo/json-ld";
+import {
+  dealOfferFacts,
+  itemListSchema,
+  JsonLd,
+  webPageSchema,
+} from "@/lib/seo/json-ld";
 import { absoluteUrl, defaultOgImage, defaultOgImages } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -188,6 +193,8 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               name: d.title,
               path: `/deals/${d.slug}`,
               description: d.shortDescription || d.description,
+              // Same data source as the deal-page Offer schema (F240).
+              offer: dealOfferFacts(d),
             })),
           })}
         />

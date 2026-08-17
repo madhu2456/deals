@@ -13,6 +13,9 @@
 #
 # Backup cron (non-root, as madhu; idempotent):
 #   cd /opt/deals && ./deploy.sh --install-backup-cron
+#
+# Offer-validity checker cron (non-root, as madhu; idempotent; 04:00 UTC):
+#   cd /opt/deals && ./deploy.sh --install-offer-checker-cron
 # =============================================================================
 
 set -euo pipefail
@@ -32,6 +35,10 @@ if [ "${1:-}" = "--update" ] || [ "${1:-}" = "update" ]; then
   MODE="update"
 elif [ "${1:-}" = "--install-backup-cron" ] || [ "${1:-}" = "install-backup-cron" ]; then
   MODE="install-backup-cron"
+elif [ "${1:-}" = "--install-offer-checker-cron" ] || [ "${1:-}" = "install-offer-checker-cron" ]; then
+  MODE="install-offer-checker-cron"
+elif [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "help" ]; then
+  MODE="help"
 fi
 
 echo "=== Deals deployment (${MODE}) ==="
@@ -273,6 +280,57 @@ EOF
   echo "  Monthly restore drill + date tracking: see docs/ops/backup-restore.md"
 }
 
+# Idempotent host crontab entry for the offer-validity checker (F231,
+# scripts/check-offer-validity.ts). Re-runs replace the marked entry instead
+# of duplicating it. The checker is REPORT-ONLY (flags expired/broken deals
+# for admin review; never auto-applies status changes) and runs INSIDE the
+# deals container via `docker compose exec` — the image ships node_modules +
+# scripts, and the container has the live DB at /app/data/deals.db plus
+# outbound network for URL probes, so this works for both named-volume and
+# bind-mount deployments. Log: /var/log/deals-offer-check.log. Alerting:
+# findings exit non-zero, which appends an echo to the log AND produces cron
+# output → cron mails it to MAILTO (default: crontab owner = the deploy user;
+# override with OFFER_CHECK_MAILTO=you@example.com before the re-run).
+install_offer_checker_cron() {
+  if ! command -v crontab >/dev/null 2>&1; then
+    echo "ERROR: crontab not found. Install cron first: apt-get install -y cron"
+    exit 1
+  fi
+
+  # Idempotent rewrite: drop previous deals-offer-check entries, keep the rest.
+  local tmp
+  tmp="$(mktemp)"
+  if ! crontab -l 2>/dev/null | grep -v -e 'deals-offer-check' >"${tmp}"; then
+    : >"${tmp}"
+  fi
+  if [ -n "${OFFER_CHECK_MAILTO:-}" ]; then
+    cat >>"${tmp}" <<EOF
+MAILTO="${OFFER_CHECK_MAILTO}"
+EOF
+  fi
+  cat >>"${tmp}" <<EOF
+# deals-offer-check (deploy.sh --install-offer-checker-cron; daily 04:00 UTC; container exec)
+0 4 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'cd /app && ./node_modules/.bin/tsx scripts/check-offer-validity.ts' >>/var/log/deals-offer-check.log 2>&1; rc=\$?; if [ \${rc} -ne 0 ]; then echo "deals offer-check found findings (exit \${rc}) — see /var/log/deals-offer-check.log"; fi
+EOF
+  if ! crontab "${tmp}"; then
+    echo "ERROR: crontab install failed."
+    rm -f "${tmp}"
+    exit 1
+  fi
+  rm -f "${tmp}"
+
+  echo "  Installed (idempotent) crontab entry:"
+  crontab -l | grep 'deals-offer-check' | sed 's/^/    /'
+
+  echo ""
+  echo "  Runs daily 04:00 UTC inside the deals container: report-only, exit 0 ="
+  echo "  nothing to do, exit 1 = findings needing admin review (see the log)."
+  echo "  Findings are alert-mailed via cron (MAILTO; default: crontab owner)."
+  echo "  Logs: tail -f /var/log/deals-offer-check.log"
+  echo "  Manual run: cd ${APP_DIR} && docker compose exec deals sh -c 'cd /app && ./node_modules/.bin/tsx scripts/check-offer-validity.ts'"
+  echo "  Runbook + admin SLA: docs/ops/offer-checker.md (host install = owner-ops)"
+}
+
 # Install repo nginx config → /etc/nginx/sites-available/deals (every deploy)
 # Source of truth: ${APP_DIR}/nginx/deals.conf or deals.ssl.conf
 install_nginx_from_repo() {
@@ -443,6 +501,39 @@ if [ "${MODE}" = "install-backup-cron" ]; then
   echo "  Crontab: crontab -l | grep deals-"
   echo "  Logs:    tail -f /var/log/deals-backup.log"
   echo "  Offsite: rclone copy (see output above + docs/ops/backup-restore.md)"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Offer-checker cron install (non-root: run as madhu — never requires root)
+# ---------------------------------------------------------------------------
+if [ "${MODE}" = "install-offer-checker-cron" ]; then
+  echo "    Running offer-checker cron install as $(whoami) for ${APP_DIR}..."
+  install_offer_checker_cron
+
+  echo ""
+  echo "=== Offer-checker cron install complete ==="
+  echo "  Crontab: crontab -l | grep deals-offer-check"
+  echo "  Logs:    tail -f /var/log/deals-offer-check.log"
+  echo "  Runbook: docs/ops/offer-checker.md (host install = owner-ops)"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Help (non-root, safe)
+# ---------------------------------------------------------------------------
+if [ "${MODE}" = "help" ]; then
+  echo "Usage: $0 [mode]"
+  echo ""
+  echo "Modes (run from ${APP_DIR}):"
+  echo "  (no args)                 Full bootstrap as root (first-time provisioning)"
+  echo "  --update                  Non-root update: pull + rebuild + restart"
+  echo "  --install-backup-cron     Non-root: install idempotent SQLite backup cron (03:15/03:45 UTC)"
+  echo "  --install-offer-checker-cron  Non-root: install idempotent offer-validity checker cron (04:00 UTC, MAILTO alert on findings)"
+  echo "  --help                    Show this help"
+  echo ""
+  echo "Env: DEPLOY_USER, REPO_URL, BRANCH, DOMAIN, APP_PORT, APP_DIR,"
+  echo "     BACKUP_DIR, BACKUP_DATABASE_URL, OFFER_CHECK_MAILTO (see docs/ops/offer-checker.md)"
   exit 0
 fi
 

@@ -7,6 +7,13 @@ import { getSiteUrl } from "@/lib/site";
  * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot,
  * Applebot-Extended, Bytespider) are blocked.
  * Claude-SearchBot / Claude-User / Claude-Web are allowed (citation); ClaudeBot training stays blocked.
+ *
+ * Decision D5 (recorded, owner): blocking training crawlers is INTENTIONAL and
+ * consistent across all madhudadi.in hosts — do NOT flip this to match
+ * adticks.com, whose named-Allow of GPTBot/ClaudeBot/Applebot-Extended is its
+ * own product choice for AEO tooling. Note: allowing a crawler never
+ * guarantees citation (Allow ≠ cited) — the AI-profile/llms.txt content is
+ * what earns citations.
  */
 export default function robots(): MetadataRoute.Robots {
   const site = getSiteUrl();

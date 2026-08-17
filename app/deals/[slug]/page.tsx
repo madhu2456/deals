@@ -42,18 +42,30 @@ interface DealPageProps {
 
 export const dynamic = "force-dynamic";
 
-/** Absolute title ≤ ~70 chars: drop brand+long template stacking. */
+/**
+ * Absolute title ≤ ~70 chars: drop brand+long template stacking. Long titles
+ * are shortened WITHOUT an ellipsis (F233): first strip trailing clauses
+ * (dash/pipe/colon separated) so the core reads as a complete phrase; only if
+ * it is still over budget, hard-truncate at the last word boundary. A
+ * truncated clause ending in an ellipsis character reads as an error; a
+ * dropped clause reads as a shorter title.
+ */
 function dealDocumentTitle(dealTitle: string): string {
   const suffix = ` | ${SITE_NAME}`;
   const maxCore = Math.max(24, 68 - suffix.length);
   let core = dealTitle.trim();
   if (core.length > maxCore) {
-    core =
-      core
-        .slice(0, maxCore - 1)
+    core = core
+      .replace(/\s*[—–|]\s*.*$/, "")
+      .replace(/\s*[:：]\s*.*$/, "")
+      .trimEnd();
+    if (core.length > maxCore) {
+      core = core
+        .slice(0, maxCore)
         .replace(/\s+\S*$/, "")
         .replace(/[|–—-]\s*$/, "")
-        .trimEnd() + "…";
+        .trimEnd();
+    }
   }
   return `${core}${suffix}`;
 }

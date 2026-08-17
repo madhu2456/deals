@@ -170,6 +170,30 @@ Bot protection for `/submit`. Keys are env-only — never commit real values.
    misconfiguration and production rejects submissions until the second key is
    added (`lib/actions.ts`). `pnpm test:turnstile-config` enforces the parity
    rule in CI.
+4. Deploy. Parity is fail-closed: with both keys set the server verifies the
+   token and the form renders the widget; with neither set the form falls back
+   to honeypot + timing checks; setting **exactly one** key is a
+   misconfiguration and production rejects submissions until the second key is
+   added (`lib/actions.ts`). `pnpm test:turnstile-config` enforces the parity
+   rule in CI.
+
+### Analytics / GTM (decision D007 — OFF by default)
+
+**No analytics are live.** GTM is env-gated and disabled by default:
+
+- `NEXT_PUBLIC_GTM_ID` is empty/unset in `.env.example` and in the deploy
+  `.env`; empty disables the GTM script and noscript entirely (verified: the
+  live build ships 0 GTM references — no pre-consent leak).
+- The container export `gtm/GTM-PT2ZHD3W-complete-measurement.json` currently
+  has `consentStatus: NOT_SET` on all tags — it is **not** consent-bound and
+  must NOT be enabled as-is.
+- **Posture:** no-analytics until the owner (a) sets `NEXT_PUBLIC_GTM_ID` at
+  image build (compose build arg — `NEXT_PUBLIC_*` is inlined at build time,
+  a container restart is not enough), and (b) re-imports a consent-bound
+  container (consent tags configured, NOT_SET resolved). Until then the
+  privacy policy's "analytics only after consent" claim holds trivially.
+- `pnpm test:gtm-env` enforces that the container ID never reappears as an
+  app/image default.
 
 ---
 

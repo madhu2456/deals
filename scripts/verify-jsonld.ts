@@ -295,6 +295,35 @@ const pastOffer = pastExpiry.offers as Record<string, unknown>;
 assert(pastOffer.availability === "https://schema.org/OutOfStock", "past-expiry availability OutOfStock");
 assert(pastOffer.price === 29.99, "past-expiry price still present");
 assert(pastOffer.priceCurrency === "USD", "past-expiry currency USD");
+assert(typeof pastOffer.validThrough === "string", "past-expiry has validThrough (dated deal)");
+
+// ── F234: perpetual deals — InStock WITHOUT validThrough (documented policy) ──
+// A deal with no expiryDate has no end date; schema.org has no "no end date"
+// value, so validThrough must be omitted. InStock means "approved and listed,
+// no known expiry" — merchant-side staleness is covered by the offer-checker
+// cron + admin review, never by fabricating a validThrough.
+const perpetual = offerSchema({
+  title: "Perpetual Deal",
+  slug: "perpetual-deal",
+  description: "No expiry date set",
+  brandName: "Sample Brand",
+  dealUrl: "https://example.com/perpetual",
+  discountType: "FIXED",
+  discountValue: "$9.99",
+  discountedPrice: "$9.99",
+  category: { name: "Software", slug: "software" },
+});
+const perpetualOffer = perpetual.offers as Record<string, unknown>;
+assert(
+  perpetualOffer.availability === "https://schema.org/InStock",
+  "perpetual availability stays InStock"
+);
+assert(
+  perpetualOffer.validThrough === undefined,
+  "perpetual has NO validThrough (only dated deals emit one)"
+);
+assert(!("validThrough" in perpetualOffer), "perpetual offer has no validThrough key");
+assert(perpetualOffer.price === 9.99, "perpetual price still parsed");
 
 // ── FAQ schema ──
 const faq = faqSchema([

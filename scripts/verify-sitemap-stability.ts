@@ -8,8 +8,9 @@
  *
  * Checks:
  *  1. Static source guard on app/sitemap.ts: dynamic entries derive lastmod
- *     from DB fields; `lastModified: now` appears ONLY on the static
- *     routes; no `lastModified: new Date()` churn pattern.
+ *     from DB fields; NO `lastModified: now` anywhere — the 5 static routes
+ *     stamp the stable SITE_STATIC_LAST_MODIFIED constant (F236); no
+ *     `lastModified: new Date()` churn pattern.
  *  2. DB-backed double-seed (temp DB copy — never the live DB): run the seed
  *     twice, derive the exact sitemap lastmod map (deals + categories) both
  *     times, assert byte-identical. Proves two consecutive seeds leave
@@ -63,6 +64,8 @@ function resolveSourceDb(): string | null {
 
 /**
  * Exact mirror of app/sitemap.ts lastmod derivation (updatedAt || approvedAt).
+ * `now` is used only as the expiry-filter bound, never as a lastmod — mirrors
+ * app/sitemap.ts, where the clock must not appear in lastmod at all (F236).
  * The client is passed in so callers control which DB it is bound to: the
  * temp-DB module singleton here, or a fresh client on the live DB.
  */
@@ -85,12 +88,14 @@ async function deriveLastmodMap(prismaClient: PrismaClient) {
   for (const d of deals) {
     if (d.status !== "APPROVED") continue;
     if (d.expiryDate && d.expiryDate <= now) continue; // approvedNotExpired filter
-    const lm = d.updatedAt ?? d.approvedAt ?? now; // mirrors `d.updatedAt || d.approvedAt || now`
+    // Mirrors `d.updatedAt || d.approvedAt` — no clock fallback (F236);
+    // updatedAt is non-nullable in the schema.
+    const lm = d.updatedAt ?? d.approvedAt;
     dealMap.set(d.slug, lm.toISOString());
   }
   const categoryMap = new Map<string, string>();
   for (const c of categories) {
-    categoryMap.set(c.slug, (c.updatedAt ?? now).toISOString()); // mirrors `c.updatedAt ?? now`
+    categoryMap.set(c.slug, c.updatedAt.toISOString()); // mirrors `c.updatedAt`
   }
   return { dealMap, categoryMap };
 }
@@ -124,11 +129,20 @@ async function main(): Promise<void> {
     !/lastModified:\s*new Date\(\)/.test(sitemapSrc),
     "no `lastModified: new Date()` deploy-time churn pattern"
   );
-  // Static routes may stamp `now` (home, /deals, /categories, /about, /affiliate-disclosure).
+  // F236: NO `lastModified: now` anywhere (static or dynamic). Static routes
+  // use the stable SITE_STATIC_LAST_MODIFIED constant; dynamic entries derive
+  // from DB columns only. The `now` identifier may not appear in the source
+  // at all — a reintroduced clock stamp would make lastmod churn between
+  // fetches seconds apart.
   assertEqual(
     (sitemapSrc.match(/lastModified:\s*now/g) ?? []).length,
+    0,
+    "no `lastModified: now` remains (static routes use a stable constant)"
+  );
+  assertEqual(
+    (sitemapSrc.match(/lastModified:\s*SITE_STATIC_LAST_MODIFIED/g) ?? []).length,
     5,
-    "`lastModified: now` appears only on the 5 static routes"
+    "all 5 static routes stamp SITE_STATIC_LAST_MODIFIED (stable content date)"
   );
   assert(
     sitemapSrc.includes("${site}/about"),

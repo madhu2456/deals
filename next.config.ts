@@ -18,6 +18,12 @@ const csp = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "upgrade-insecure-requests",
+  // CSP violation reporting (D4): report-uri is the active channel
+  // (report-to csp-endpoint needs a Reporting-Endpoints header, which the
+  // shared blog pattern deliberately omits — browsers fall back to
+  // report-uri). Collector: app/api/csp-report/route.ts.
+  "report-uri /api/csp-report",
+  "report-to csp-endpoint",
 ].join("; ");
 
 const securityHeaders = [
