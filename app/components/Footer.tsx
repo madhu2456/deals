@@ -109,12 +109,12 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://udemyenroller.madhudadi.in"
+                  href="https://udemyenroller.madhudadi.in/udemycoupons"
                   target="_blank"
                   rel="noopener noreferrer me"
                   className={externalLinkClass}
                 >
-                  Udemy Course Enroller
+                  100% Free Udemy Coupons &amp; Promo Codes
                   <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
                 </a>
               </li>

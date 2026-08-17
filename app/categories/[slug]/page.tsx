@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Search, Tag } from "lucide-react";
+import { ArrowLeft, ExternalLink, GraduationCap, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -254,6 +254,36 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         </section>
 
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          {slug === "learning-and-education" && (
+            <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <GraduationCap className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground sm:text-xl">
+                      Automate Free Udemy Course Enrollments
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                      Explore 100% off Udemy coupons and automate course claiming with our sister platform.
+                    </p>
+                  </div>
+                </div>
+                <Button asChild className="min-h-10 shrink-0 gap-1.5 self-start sm:self-center">
+                  <a
+                    href="https://udemyenroller.madhudadi.in/udemycoupons"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    100% Free Udemy Coupons &amp; Promo Codes
+                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <span className="mr-2 text-sm font-medium text-muted-foreground">Category:</span>
             {activeCategories.map((cat) => (

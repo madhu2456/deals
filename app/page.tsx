@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ExternalLink, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -166,6 +166,51 @@ export default async function HomePage() {
                 dealCount={category._count.deals}
               />
             ))}
+          </div>
+        </section>
+
+        {/* Cross-property promotional banner: 100% Free Udemy Coupons & Course Enroller */}
+        <section
+          className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8"
+          aria-labelledby="udemy-promo-heading"
+        >
+          <div className="relative min-h-[120px] overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-background p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <span className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                  <GraduationCap className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                      Sister Property
+                    </span>
+                    <span className="text-xs text-muted-foreground">Updated Hourly</span>
+                  </div>
+                  <h2
+                    id="udemy-promo-heading"
+                    className="mt-1 text-balance text-xl font-bold tracking-tight text-foreground sm:text-2xl"
+                  >
+                    Looking for 100% Free Online Courses &amp; Certifications?
+                  </h2>
+                  <p className="mt-1.5 max-w-2xl text-pretty text-sm text-muted-foreground sm:text-base">
+                    Discover verified 100% off Udemy coupons and automate one-click course enrollment with our sister tool, Udemy Course Enroller.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <Button asChild size="lg" className="min-h-11 w-full gap-2 shadow-sm sm:w-auto">
+                  <a
+                    href="https://udemyenroller.madhudadi.in/udemycoupons"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    100% Free Udemy Coupons &amp; Promo Codes
+                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </a>
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
 
