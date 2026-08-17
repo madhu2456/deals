@@ -46,8 +46,27 @@ if [[ ! -f "${BACKUP_SRC}" ]]; then
   exit 1
 fi
 
-if ! command -v sqlite3 >/dev/null 2>&1; then
-  echo "error: sqlite3 CLI is required" >&2
+sqlite_integrity() {
+  local db="$1"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "${db}" "PRAGMA integrity_check;"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - "${db}" <<'PY'
+import sqlite3, sys
+conn = sqlite3.connect(sys.argv[1])
+try:
+    print(conn.execute("PRAGMA integrity_check;").fetchone()[0])
+finally:
+    conn.close()
+PY
+  else
+    echo "error: sqlite3 CLI or python3 is required" >&2
+    exit 1
+  fi
+}
+
+if ! command -v sqlite3 >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1; then
+  echo "error: sqlite3 CLI or python3 is required" >&2
   exit 1
 fi
 
@@ -84,7 +103,7 @@ mkdir -p "${DB_DIR}"
 echo "[restore] source=${BACKUP_SRC}"
 echo "[restore] target=${DB_PATH}"
 
-CHECK="$(sqlite3 "${BACKUP_SRC}" "PRAGMA integrity_check;")"
+CHECK="$(sqlite_integrity "${BACKUP_SRC}")"
 if [[ "${CHECK}" != "ok" ]]; then
   echo "error: integrity_check failed on backup (refusing restore): ${CHECK}" >&2
   exit 1
@@ -94,7 +113,7 @@ fi
 TMP="${DB_PATH}.restore.$$"
 cp -f "${BACKUP_SRC}" "${TMP}"
 # Re-check the staged copy
-CHECK2="$(sqlite3 "${TMP}" "PRAGMA integrity_check;")"
+CHECK2="$(sqlite_integrity "${TMP}")"
 if [[ "${CHECK2}" != "ok" ]]; then
   echo "error: integrity_check failed on staged copy: ${CHECK2}" >&2
   rm -f "${TMP}"
@@ -116,7 +135,7 @@ mv -f "${TMP}" "${DB_PATH}"
 # (only after the confirmed main-file replace above).
 rm -f "${DB_PATH}-wal" "${DB_PATH}-shm" 2>/dev/null || true
 
-FINAL="$(sqlite3 "${DB_PATH}" "PRAGMA integrity_check;")"
+FINAL="$(sqlite_integrity "${DB_PATH}")"
 if [[ "${FINAL}" != "ok" ]]; then
   echo "error: post-restore integrity_check failed: ${FINAL}" >&2
   exit 1

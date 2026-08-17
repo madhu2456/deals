@@ -64,8 +64,51 @@ resolve_db_path() {
   printf '%s' "${path}"
 }
 
-if ! command -v sqlite3 >/dev/null 2>&1; then
-  echo "error: sqlite3 CLI is required" >&2
+sqlite_backup() {
+  local src="$1" dest="$2"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "${src}" ".backup '${dest}'"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - "${src}" "${dest}" <<'PY'
+import sqlite3, sys
+src, dest = sys.argv[1], sys.argv[2]
+src_conn = sqlite3.connect(src)
+try:
+    dest_conn = sqlite3.connect(dest)
+    try:
+        src_conn.backup(dest_conn)
+    finally:
+        dest_conn.close()
+finally:
+    src_conn.close()
+PY
+  else
+    echo "error: sqlite3 CLI or python3 is required" >&2
+    exit 1
+  fi
+}
+
+sqlite_integrity() {
+  local db="$1"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "${db}" "PRAGMA integrity_check;"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - "${db}" <<'PY'
+import sqlite3, sys
+conn = sqlite3.connect(sys.argv[1])
+try:
+    print(conn.execute("PRAGMA integrity_check;").fetchone()[0])
+finally:
+    conn.close()
+PY
+  else
+    echo "error: sqlite3 CLI or python3 is required" >&2
+    exit 1
+  fi
+}
+
+if ! command -v sqlite3 >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1; then
+  echo "error: sqlite3 CLI or python3 is required" >&2
   exit 1
 fi
 
@@ -99,14 +142,14 @@ echo "[backup] dest=${BACKUP_FILE}"
 
 # Online consistent backup (holds a brief read lock). Stage in .tmp so a
 # killed write never publishes a partial final *.db with a fresh mtime.
-if ! sqlite3 "${DB_PATH}" ".backup '${TMP_FILE}'"; then
+if ! sqlite_backup "${DB_PATH}" "${TMP_FILE}"; then
   rm -f -- "${TMP_FILE}"
   echo "error: sqlite backup failed" >&2
   exit 1
 fi
 
 # Integrity check on the tmp copy (never modify live DB for verification)
-CHECK="$(sqlite3 "${TMP_FILE}" "PRAGMA integrity_check;")"
+CHECK="$(sqlite_integrity "${TMP_FILE}")"
 if [[ "${CHECK}" != "ok" ]]; then
   echo "error: integrity_check failed on backup: ${CHECK}" >&2
   rm -f -- "${TMP_FILE}"

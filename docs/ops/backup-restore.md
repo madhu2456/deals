@@ -156,12 +156,26 @@ until the marker is removed after stop), and a **pre-restore copy** of the
 live DB (`*.pre-restore.<timestamp>`) kept before the atomic replace — so a
 failed drill can always roll back.
 
-### Local drill (gate G — runs in CI/dev, no DB copy in repo)
+### Local drill (gate G — automated & manual scratch drill)
 
 There is **no DB copy in the repo**: `data/` is empty and `prisma/dev.db` is
-dev-only (never committed). The local drill therefore builds a scratch DB from
-the schema + seed, backs it up, and restores it — proving the full
-backup→restore path without touching `dev.db`:
+dev-only (never committed).
+
+#### 1. Automated Scratch Drill (Recommended)
+
+`scripts/verify-restore-scratch.sh` provides an end-to-end automated disaster recovery drill:
+- Deploys Prisma migrations onto an ephemeral scratch SQLite DB.
+- Enables WAL mode and spawns a background concurrent writer inserting canary rows.
+- Executes `scripts/backup-sqlite.sh` (with python3 fallback if `sqlite3` CLI is absent).
+- Restores via `scripts/restore-sqlite.sh`, measures and logs RTO, and verifies canary row data.
+- Simulates target DB and dirty WAL corruption and verifies clean destructive restore.
+- Deterministically cleans up scratch directories on exit.
+
+```bash
+bash scripts/verify-restore-scratch.sh
+```
+
+#### 2. Manual Scratch Drill (Fallback)
 
 ```bash
 # Scratch DB (never dev.db)
@@ -179,6 +193,7 @@ rm -rf /tmp/restore-drill                        # drill DBs are scratch
 
 Gate G = the drill above completes with `integrity_check=ok` and a non-zero
 deal count. It is a **restore-path proof**, not a production-data proof.
+
 
 ### Host drill (owner-ops — production data)
 

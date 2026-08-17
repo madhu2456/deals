@@ -3,6 +3,7 @@ import { incrementClicks } from "@/lib/data";
 import { isOriginAllowed } from "@/lib/origin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
+import { isBotUserAgent } from "@/lib/bot";
 
 export async function POST(
   request: NextRequest,
@@ -19,6 +20,14 @@ export async function POST(
 
   if (!id || typeof id !== "string" || id.length > 64) {
     return NextResponse.json({ success: false, error: "Invalid deal id" }, { status: 400 });
+  }
+
+  // Bot filtering (F-DEAL-017): automated bots, crawlers, and scrapers are
+  // ignored immediately without consuming rate-limit tokens or incrementing DB
+  // click counters.
+  const userAgent = request.headers.get("user-agent");
+  if (isBotUserAgent(userAgent)) {
+    return NextResponse.json({ success: true, ignored: true });
   }
 
   // Rate limit: max 10 clicks per minute per IP. NODE_ENV guard: dev/test
