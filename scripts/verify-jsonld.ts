@@ -2,7 +2,17 @@
  * Smoke-test JSON-LD schema generators and OG image helpers.
  * Run: pnpm exec tsx scripts/verify-jsonld.ts
  */
-import { organizationSchema, websiteSchema, webApplicationSchema, breadcrumbSchema, webPageSchema, offerSchema, faqSchema, HOME_FAQS } from "../lib/seo/json-ld";
+import {
+  organizationSchema,
+  websiteSchema,
+  webApplicationSchema,
+  breadcrumbSchema,
+  webPageSchema,
+  offerSchema,
+  faqSchema,
+  howToSchema,
+  HOME_FAQS,
+} from "../lib/seo/json-ld";
 import { defaultOgImage, defaultOgImages, SITE_NAME, SITE_NAME_SHORT, SITE_TAGLINE, PUBLISHER } from "../lib/site";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -343,6 +353,57 @@ const faq = faqSchema([
 assert(faq["@type"] === "FAQPage", "faq type");
 assert(faq.mainEntity.length === 1, "faq 1 question");
 assert(faq.mainEntity[0].name === "Is this free?", "faq question text");
+
+// ── HowTo schema ──
+const howto = howToSchema({
+  name: "How to Claim a Software Deal",
+  description: "Step-by-step guide to redeeming discounts on software and SaaS subscriptions.",
+  image: "https://deals.madhudadi.in/images/guide-og.png",
+  totalTime: "PT2M",
+  steps: [
+    {
+      name: "Find your deal",
+      text: "Browse or search for your favorite software deal on the directory.",
+      url: "https://deals.madhudadi.in/deals",
+    },
+    {
+      name: "Copy the coupon code",
+      text: "If a promo code is provided, click to copy it to your clipboard.",
+    },
+    {
+      name: "Redeem on merchant site",
+      text: "Click Get Deal to navigate to the official store and apply your discount during checkout.",
+      image: "https://deals.madhudadi.in/images/checkout-step.png",
+    },
+  ],
+});
+assert(howto["@type"] === "HowTo", "howto type");
+assert(howto.name === "How to Claim a Software Deal", "howto name");
+assert(howto.description.length > 10, "howto description");
+assert(howto.image === "https://deals.madhudadi.in/images/guide-og.png", "howto image");
+assert(howto.totalTime === "PT2M", "howto totalTime");
+assert(Array.isArray(howto.step), "howto step is array");
+assert(howto.step.length === 3, "howto 3 steps");
+assert(howto.step[0]["@type"] === "HowToStep", "step 0 type");
+assert(howto.step[0].position === 1, "step 0 position");
+assert(howto.step[0].name === "Find your deal", "step 0 name");
+assert(howto.step[0].text.length > 5, "step 0 text");
+assert(howto.step[0].url === "https://deals.madhudadi.in/deals", "step 0 url");
+assert(howto.step[1].position === 2, "step 1 position");
+assert(howto.step[1].url === undefined, "step 1 url omitted when optional");
+assert(howto.step[2].position === 3, "step 2 position");
+assert(howto.step[2].image === "https://deals.madhudadi.in/images/checkout-step.png", "step 2 image");
+
+// Minimal case (without optional image, totalTime, step url/image)
+const minimalHowto = howToSchema({
+  name: "Quick Guide",
+  description: "Quick steps",
+  steps: [{ name: "Step 1", text: "Do this" }],
+});
+assert(minimalHowto["@type"] === "HowTo", "minimal howto type");
+assert(minimalHowto.step.length === 1, "minimal howto step length 1");
+assert(!("image" in minimalHowto), "minimal howto omits image");
+assert(!("totalTime" in minimalHowto), "minimal howto omits totalTime");
 
 // ── Home FAQs ──
 assert(HOME_FAQS.length >= 4, "home faqs count");

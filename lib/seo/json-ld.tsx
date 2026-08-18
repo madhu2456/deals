@@ -451,6 +451,37 @@ export function faqSchema(
   };
 }
 
+export function howToSchema({
+  name,
+  description,
+  steps,
+  image,
+  totalTime,
+}: {
+  name: string;
+  description: string;
+  steps: { name: string; text: string; url?: string; image?: string }[];
+  image?: string;
+  totalTime?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name,
+    description,
+    ...(image ? { image } : {}),
+    ...(totalTime ? { totalTime } : {}),
+    step: steps.map((step, index) => ({
+      "@type": "HowToStep",
+      position: index + 1,
+      name: step.name,
+      text: step.text,
+      ...(step.url ? { url: step.url } : {}),
+      ...(step.image ? { image: step.image } : {}),
+    })),
+  };
+}
+
 /** Homepage FAQs optimized for AEO / GEO citation */
 export const HOME_FAQS = [
   {
