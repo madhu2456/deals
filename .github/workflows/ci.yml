@@ -1,6 +1,6 @@
-# Deploy as non-root user "madhu" to /opt/deals only.
+# CI/CD Pipeline for Discounts
 #
-# Required secrets:
+# Required secrets (deploy job only):
 #   DEPLOY_HOST     — server IP
 #   DEPLOY_USER     — madhu
 #   DEPLOY_SSH_KEY  — private key authorized for madhu
@@ -8,23 +8,124 @@
 # Optional:
 #   DEPLOY_PORT     — SSH port (default 22)
 
-name: Deploy to DigitalOcean
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  test:
+    name: Eleven Pre-Deploy Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Secret scan
+        run: bash scripts/verify-no-secrets.sh --tree
+
+      - name: "Install pnpm (packageManager: pnpm@9.15.9)"
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 9.15.9
+
+      - name: Set up Node 22 (LTS; Next.js 16 requires >= 20.9)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # Generate the Prisma client explicitly. postinstall normally covers this,
+      # but a cached/partial install or --ignore-scripts would leave
+      # @prisma/client without generated exports (TS2305 + TS7006 cascade in tsc).
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Gate 1 - JSON-LD + price-parser regression fixtures
+        run: pnpm test:jsonld
+
+      # DB-free (pure libs only: lib/format, lib/site) and ~1s,
+      # so it fits the gate's exclusion rationale for test:all.
+      - name: Gate 2 - Format helpers regression
+        run: pnpm test:format
+
+      # DB-free (pure libs only: lib/ip, lib/deal-url, lib/rate-limit) and ~1s,
+      # so it fits the gate's exclusion rationale for test:all.
+      - name: Gate 3 - Rate-limit + IP trust + URL normalization regression
+        run: pnpm test:rate-limit
+
+      # DB-free: scripts/check-offer-validity.ts imports Prisma lazily inside
+      # main(); the test imports only the pure checker functions with a mocked
+      # fetch (no network) plus source-copy assertions for F-DEAL-001.
+      - name: Gate 4 - Offer-validity checker unit tests + copy consistency
+        run: pnpm test:offer-checker
+
+      # Self-contained: copies the repo dev DB when present, else provisions a
+      # fresh temp DB via `prisma migrate deploy` (never touches a live DB),
+      # then proves seed re-runs cannot clobber existing rows (F-DEAL-010).
+      - name: Gate 5 - Seed idempotency regression
+        run: pnpm test:seed-idempotency
+
+      # Self-contained (same temp-DB strategy as seed-idempotency): proves two
+      # consecutive seeds leave sitemap lastmod derivation unchanged and that
+      # app/sitemap.ts carries no deploy-time restamp (F-DEAL-002).
+      - name: Gate 6 - Sitemap lastmod stability regression
+        run: pnpm test:sitemap-stability
+
+      # Self-contained temp DB (seeds the fresh DB when no dev.db is present —
+      # prisma/*.db is gitignored, so a clean CI checkout exercises this path):
+      # admin-created APPROVED deals carry approvedAt (getLatestDeals + JSON-LD
+      # validFrom), PENDING stays null (F-DEAL-012).
+      - name: Gate 7 - Admin approvedAt regression
+        run: pnpm test:approved-at
+
+      # Self-contained temp DB (same fresh-DB seeding): report endpoint units —
+      # valid/invalid id, rate limit (5/hr/IP), honeypot, cross-origin → 403
+      # origin guard, counter storage (F-DEAL-006).
+      - name: Gate 8 - Broken-deal report endpoint unit tests
+        run: pnpm test:report-endpoint
+
+      # DB-free static guard: Turnstile key parity (both or neither) + widget
+      # code path + .env.example documentation (F-DEAL-003). Reads key
+      # presence only — never values.
+      - name: Gate 9 - Turnstile config parity + widget code path
+        run: pnpm test:turnstile-config
+
+      # DB-free static guard: GTM-PT2ZHD3W stays out of app/lib/Dockerfile/
+      # .env.example, and empty NEXT_PUBLIC_GTM_ID returns no script/noscript.
+      - name: Gate 10 - GTM env-only / empty=off
+        run: pnpm test:gtm-env
+
+      - name: Gate 11 - Type safety
+        run: npx tsc --noEmit
+
   deploy:
-    name: Deploy
+    name: Deploy to Production
+    needs: test
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: discounts-production
+      cancel-in-progress: false
 
     steps:
       - name: Check deploy secrets
@@ -59,112 +160,6 @@ jobs:
             exit 1
           fi
           echo "Secrets OK. host=${DEPLOY_HOST} user=${DEPLOY_USER} path=/opt/deals"
-
-      # ── Test gate: eleven fast gate steps BEFORE deploy ──
-      # pnpm is pinned via the packageManager field (pnpm@9.15.9) using
-      # pnpm/action-setup; the committed pnpm-lock.yaml enables a frozen install.
-      # NOTE: `pnpm test:all` is NOT run here — it chains verify-content and
-      # verify-discovery, which exercise app routes / Next modules that can pull
-      # in DB- or env-dependent code. CI runs the gate instead:
-      #   1. test:jsonld           — JSON-LD + price-parser regression fixtures
-      #   2. test:format           — pure libs only (lib/format, lib/site), gate-safe
-      #   3. test:rate-limit       — pure libs only (lib/ip, lib/deal-url, lib/rate-limit), gate-safe
-      #   4. test:offer-checker    — pure checker functions with mocked fetch (no network)
-      #   5. test:seed-idempotency — self-contained temp DB: copies the repo dev DB
-      #                              when present, else provisions a fresh one via
-      #                              `prisma migrate deploy`; never touches a live DB
-      #   6. test:sitemap-stability — static lastmod guard + temp-DB double-seed
-      #   7. test:approved-at       — temp-DB admin approvedAt behavior (F-DEAL-012;
-      #                              seeds the fresh DB when no dev.db is present)
-      #   8. test:report-endpoint   — temp-DB report endpoint units (F-DEAL-006;
-      #                              seeds the fresh DB when no dev.db is present)
-      #   9. test:turnstile-config  — key parity + widget code path (F-DEAL-003)
-      #  10. test:gtm-env           — no shipped GTM-PT2ZHD3W; empty = no script (F048)
-      #  11. tsc --noEmit           — type safety
-      # Tests must pass before anything deploys.
-      - name: Check out repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Secret scan
-        run: bash scripts/verify-no-secrets.sh --tree
-
-      - name: "Install pnpm (packageManager: pnpm@9.15.9)"
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
-        with:
-          version: 9.15.9
-
-      - name: Set up Node 22 (LTS; Next.js 16 requires >= 20.9)
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies (frozen lockfile)
-        run: pnpm install --frozen-lockfile
-
-      # Generate the Prisma client explicitly. postinstall normally covers this,
-      # but a cached/partial install or --ignore-scripts would leave
-      # @prisma/client without generated exports (TS2305 + TS7006 cascade in tsc).
-      - name: Generate Prisma client
-        run: npx prisma generate
-
-      - name: JSON-LD + price-parser regression fixtures
-        run: pnpm test:jsonld
-
-      # DB-free (pure libs only: lib/format, lib/site) and ~1s,
-      # so it fits the gate's exclusion rationale for test:all.
-      - name: Format helpers regression
-        run: pnpm test:format
-
-      # DB-free (pure libs only: lib/ip, lib/deal-url, lib/rate-limit) and ~1s,
-      # so it fits the gate's exclusion rationale for test:all.
-      - name: Rate-limit + IP trust + URL normalization regression
-        run: pnpm test:rate-limit
-
-      # DB-free: scripts/check-offer-validity.ts imports Prisma lazily inside
-      # main(); the test imports only the pure checker functions with a mocked
-      # fetch (no network) plus source-copy assertions for F-DEAL-001.
-      - name: Offer-validity checker unit tests + copy consistency
-        run: pnpm test:offer-checker
-
-      # Self-contained: copies the repo dev DB when present, else provisions a
-      # fresh temp DB via `prisma migrate deploy` (never touches a live DB),
-      # then proves seed re-runs cannot clobber existing rows (F-DEAL-010).
-      - name: Seed idempotency regression
-        run: pnpm test:seed-idempotency
-
-      # Self-contained (same temp-DB strategy as seed-idempotency): proves two
-      # consecutive seeds leave sitemap lastmod derivation unchanged and that
-      # app/sitemap.ts carries no deploy-time restamp (F-DEAL-002).
-      - name: Sitemap lastmod stability regression
-        run: pnpm test:sitemap-stability
-
-      # Self-contained temp DB (seeds the fresh DB when no dev.db is present —
-      # prisma/*.db is gitignored, so a clean CI checkout exercises this path):
-      # admin-created APPROVED deals carry approvedAt (getLatestDeals + JSON-LD
-      # validFrom), PENDING stays null (F-DEAL-012).
-      - name: Admin approvedAt regression
-        run: pnpm test:approved-at
-
-      # Self-contained temp DB (same fresh-DB seeding): report endpoint units —
-      # valid/invalid id, rate limit (5/hr/IP), honeypot, cross-origin → 403
-      # origin guard, counter storage (F-DEAL-006).
-      - name: Broken-deal report endpoint unit tests
-        run: pnpm test:report-endpoint
-
-      # DB-free static guard: Turnstile key parity (both or neither) + widget
-      # code path + .env.example documentation (F-DEAL-003). Reads key
-      # presence only — never values.
-      - name: Turnstile config parity + widget code path
-        run: pnpm test:turnstile-config
-
-      # DB-free static guard: GTM-PT2ZHD3W stays out of app/lib/Dockerfile/
-      # .env.example, and empty NEXT_PUBLIC_GTM_ID returns no script/noscript.
-      - name: GTM env-only / empty=off
-        run: pnpm test:gtm-env
-
-      - name: Type safety
-        run: npx tsc --noEmit
 
       - name: Deploy over SSH as madhu
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
