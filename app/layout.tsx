@@ -14,6 +14,7 @@ import {
   JsonLd,
   organizationSchema,
   websiteSchema,
+  webApplicationSchema,
 } from "@/lib/seo/json-ld";
 import {
   absoluteUrl,
@@ -135,6 +136,7 @@ export default function RootLayout({
           <GoogleTagManager />
           <JsonLd data={organizationSchema()} />
           <JsonLd data={websiteSchema()} />
+          <JsonLd data={webApplicationSchema()} />
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>

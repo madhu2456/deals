@@ -2,7 +2,7 @@
  * Smoke-test JSON-LD schema generators and OG image helpers.
  * Run: pnpm exec tsx scripts/verify-jsonld.ts
  */
-import { organizationSchema, websiteSchema, breadcrumbSchema, webPageSchema, offerSchema, faqSchema, HOME_FAQS } from "../lib/seo/json-ld";
+import { organizationSchema, websiteSchema, webApplicationSchema, breadcrumbSchema, webPageSchema, offerSchema, faqSchema, HOME_FAQS } from "../lib/seo/json-ld";
 import { defaultOgImage, defaultOgImages, SITE_NAME, SITE_NAME_SHORT, SITE_TAGLINE, PUBLISHER } from "../lib/site";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -36,6 +36,17 @@ const web = websiteSchema();
 assert(web["@type"] === "WebSite", "web type");
 assert(web.inLanguage === "en-IN", "web locale");
 assert(web.potentialAction["@type"] === "SearchAction", "web search action");
+
+// ── WebApplication schema ──
+const webapp = webApplicationSchema();
+assert(webapp["@type"] === "WebApplication", "webapp type");
+assert(webapp.name === SITE_NAME, "webapp name");
+assert(webapp.author["@type"] === "Person", "webapp author type");
+assert(webapp.author["@id"] === "https://madhudadi.in/#person", "webapp author @id");
+assert(webapp.author.name === PUBLISHER.name, "webapp author name");
+assert(webapp.creator["@type"] === "Person", "webapp creator type");
+assert(webapp.creator["@id"] === "https://madhudadi.in/#person", "webapp creator @id");
+assert(webapp.creator.name === PUBLISHER.name, "webapp creator name");
 
 // ── Breadcrumb schema ──
 const crumbs = breadcrumbSchema([

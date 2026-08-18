@@ -71,6 +71,40 @@ export function websiteSchema() {
   };
 }
 
+export function webApplicationSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "@id": `${getSiteUrl()}/#webapp`,
+    name: SITE_NAME,
+    url: getSiteUrl(),
+    applicationCategory: "ShoppingApplication",
+    operatingSystem: "All",
+    browserRequirements: "Requires JavaScript. Requires HTML5.",
+    description: SITE_DESCRIPTION,
+    author: {
+      "@type": "Person",
+      "@id": `${PUBLISHER.url}/#person`,
+      name: PUBLISHER.name,
+      url: PUBLISHER.profile,
+    },
+    creator: {
+      "@type": "Person",
+      "@id": `${PUBLISHER.url}/#person`,
+      name: PUBLISHER.name,
+      url: PUBLISHER.profile,
+    },
+    publisher: { "@id": `${getSiteUrl()}/#organization` },
+    inLanguage: "en-IN",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+    },
+  };
+}
+
 export function breadcrumbSchema(
   items: { name: string; path: string }[]
 ) {

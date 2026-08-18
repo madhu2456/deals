@@ -53,7 +53,7 @@ export const dynamic = "force-dynamic";
 function dealDocumentTitle(dealTitle: string): string {
   const suffix = ` | ${SITE_NAME}`;
   const maxCore = Math.max(24, 68 - suffix.length);
-  let core = dealTitle.trim();
+  let core = dealTitle.replace(/\.{2,}|…/g, "").trim();
   if (core.length > maxCore) {
     core = core
       .replace(/\s*[—–|]\s*.*$/, "")
@@ -67,6 +67,8 @@ function dealDocumentTitle(dealTitle: string): string {
         .trimEnd();
     }
   }
+  // Ensure no trailing punctuation or literal dots remain before the suffix
+  core = core.replace(/[.,;:\s|–—-]+$/, "").trimEnd();
   return `${core}${suffix}`;
 }
 
