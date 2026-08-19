@@ -79,12 +79,14 @@ PY
   fi
 }
 
-PRISMA_BIN="${ROOT}/node_modules/.bin/prisma"
-if [[ ! -x "${PRISMA_BIN}" ]]; then
+PRISMA_CMD=("${ROOT}/node_modules/.bin/prisma")
+if [[ ! -x "${PRISMA_CMD[0]}" ]]; then
   if command -v prisma >/dev/null 2>&1; then
-    PRISMA_BIN="prisma"
+    PRISMA_CMD=("prisma")
+  elif command -v pnpm >/dev/null 2>&1; then
+    PRISMA_CMD=("pnpm" "exec" "prisma")
   elif command -v npx >/dev/null 2>&1; then
-    PRISMA_BIN="npx prisma"
+    PRISMA_CMD=("npx" "prisma")
   else
     echo "error: prisma CLI not found" >&2
     exit 1
@@ -102,7 +104,7 @@ mkdir -p "${BACKUP_DIR}"
 
 # 2. Deploy Prisma migrations to fresh scratch DB
 echo "[verify-restore-scratch] Deploying migrations to scratch DB..."
-DATABASE_URL="file:${SCRATCH_DB}" "${PRISMA_BIN}" migrate deploy
+DATABASE_URL="file:${SCRATCH_DB}" "${PRISMA_CMD[@]}" migrate deploy
 
 # 3. Enable WAL mode and insert canary records
 echo "[verify-restore-scratch] Enabling WAL mode and writing canary records..."

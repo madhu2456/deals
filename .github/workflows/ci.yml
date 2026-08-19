@@ -57,7 +57,7 @@ jobs:
       # but a cached/partial install or --ignore-scripts would leave
       # @prisma/client without generated exports (TS2305 + TS7006 cascade in tsc).
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: pnpm exec prisma generate
 
       - name: Gate 1 - JSON-LD + price-parser regression fixtures
         run: pnpm test:jsonld
@@ -115,7 +115,7 @@ jobs:
         run: pnpm test:gtm-env
 
       - name: Gate 11 - Type safety
-        run: npx tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
   deploy:
     name: Deploy to Production
