@@ -134,6 +134,15 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/pricing.md",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
       // Public marketing/listing pages — edge cache for 15 min, serve stale for 24h
       {
         source: "/",

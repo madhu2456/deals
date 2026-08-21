@@ -12,7 +12,7 @@ interface HeroProps {
 export function Hero({ dealCount, popularBrands }: HeroProps) {
   return (
     <section
-      className="relative overflow-hidden border-b border-border bg-gradient-to-br from-background via-background to-secondary/40 px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+      className="home-hero relative overflow-hidden border-b border-border bg-gradient-to-br from-background via-background to-secondary/40 px-4 pt-6 pb-8 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
       aria-labelledby="hero-heading"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -21,7 +21,7 @@ export function Hero({ dealCount, popularBrands }: HeroProps) {
       </div>
 
       <div className="relative mx-auto max-w-4xl text-center">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-1.5 text-sm font-medium text-foreground shadow-sm">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-1.5 text-sm font-medium text-foreground shadow-sm sm:mb-6">
           <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
           <span className="tabular-nums">
             {dealCount}+ verified {dealCount === 1 ? "deal" : "deals"}
@@ -38,13 +38,13 @@ export function Hero({ dealCount, popularBrands }: HeroProps) {
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
           <strong className="font-semibold text-foreground">{SITE_NAME}</strong>
           {" "}
-          lists reviewed software and SaaS discounts. We check the claim path before listing; offers change, and we will not publish spam dumps. Confirm current steps on each deal page.
+          lists reviewed software and SaaS discounts. We check the claim path before listing; offers change, and we will not publish spam dumps. Confirm the current steps, eligibility, and price on each deal page and on the merchant site before you claim.
         </p>
 
         <form
           action="/deals"
           role="search"
-          className="mx-auto mt-8 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-stretch"
+          className="home-search mx-auto mt-4 flex max-w-xl flex-row items-stretch gap-2 sm:mt-8 sm:gap-3"
         >
           <div className="relative min-w-0 flex-1">
             <label htmlFor="hero-search" className="sr-only">
@@ -63,7 +63,7 @@ export function Hero({ dealCount, popularBrands }: HeroProps) {
               enterKeyHint="search"
             />
           </div>
-          <Button type="submit" size="lg" className="h-12 min-h-12 gap-2 rounded-xl px-6">
+          <Button type="submit" size="lg" className="h-12 min-h-12 shrink-0 gap-2 rounded-xl px-4 sm:px-6">
             <Search className="h-4 w-4" aria-hidden="true" />
             Search
           </Button>

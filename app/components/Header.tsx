@@ -47,7 +47,7 @@ export function Header() {
                   href={link.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     active
                       ? "bg-primary/10 text-primary"
                       : "text-foreground/80 hover:bg-muted hover:text-foreground"
@@ -167,7 +167,7 @@ export function Header() {
                         aria-current={active ? "page" : undefined}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
-                          "min-h-11 rounded-xl px-3 py-3 text-base font-medium transition-colors",
+                          "min-h-11 rounded-xl px-3 py-3 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           active
                             ? "bg-primary/10 text-primary"
                             : "text-foreground/90 hover:bg-muted"

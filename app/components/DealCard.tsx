@@ -98,7 +98,7 @@ export function DealCard({ deal }: DealCardProps) {
               "transition-colors duration-200 group-hover:bg-primary/15"
             )}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/70">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
               Save
             </p>
             <p className="max-w-[7.5rem] break-words text-base font-bold leading-tight text-primary tabular-nums">

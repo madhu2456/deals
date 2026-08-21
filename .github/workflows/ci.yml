@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   test:
-    name: Eleven Pre-Deploy Quality Gates
+    name: Twelve Pre-Deploy Quality Gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -58,6 +58,10 @@ jobs:
       # @prisma/client without generated exports (TS2305 + TS7006 cascade in tsc).
       - name: Generate Prisma client
         run: pnpm exec prisma generate
+
+      # Only after `pnpm audit --prod` is 0 high with exact postcss/sharp pins (F301).
+      - name: Gate 12 - Production SCA (high)
+        run: pnpm audit --prod --audit-level=high
 
       - name: Gate 1 - JSON-LD + price-parser regression fixtures
         run: pnpm test:jsonld

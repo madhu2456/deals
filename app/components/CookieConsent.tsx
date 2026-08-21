@@ -151,17 +151,11 @@ const FOCUS_RING =
 export default function CookieConsentBanner() {
   const { consent, accept, decline } = useCookieConsent();
   const panelRef = useRef<HTMLDivElement>(null);
-  const acceptRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (consent !== null) return;
     const root = panelRef.current;
     if (!root) return;
-
-    const previousActive =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
 
     document.documentElement.setAttribute("data-cookie-banner", "open");
 
@@ -178,31 +172,13 @@ export default function CookieConsentBanner() {
     const resizeObserver = new ResizeObserver(setBannerHeight);
     resizeObserver.observe(root);
 
-    acceptRef.current?.focus();
-
-    const getFocusable = () =>
-      Array.from(
-        root.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"),
-      );
-
+    // Non-modal: Escape declines only when focus is inside the banner (C50).
+    // Do not autofocus or wrap Tab (F309) — skip link and main stay first-visit Tab-reachable.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        decline();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const items = getFocusable();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      if (e.key !== "Escape") return;
+      if (!root.contains(e.target as Node)) return;
+      e.preventDefault();
+      decline();
     };
 
     document.addEventListener("keydown", onKeyDown);
@@ -212,9 +188,6 @@ export default function CookieConsentBanner() {
       document.removeEventListener("keydown", onKeyDown);
       document.documentElement.removeAttribute("data-cookie-banner");
       document.documentElement.style.removeProperty("--cookie-banner-height");
-      if (previousActive && document.contains(previousActive)) {
-        previousActive.focus();
-      }
     };
   }, [consent, decline]);
 
@@ -224,9 +197,8 @@ export default function CookieConsentBanner() {
   return (
     <div
       ref={panelRef}
-      role="dialog"
-      // Non-blocking chrome: claim bar and page stay usable while banner is open
-      aria-modal="false"
+      role="region"
+      aria-live="polite"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
       className="fixed bottom-0 left-0 right-0 z-[200] border-t border-border/60 bg-card/95 backdrop-blur-md shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-300"
@@ -234,31 +206,35 @@ export default function CookieConsentBanner() {
       <h2 id="cookie-consent-title" className="sr-only">
         Cookie consent
       </h2>
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
-        <p id="cookie-consent-desc" className="text-sm text-muted-foreground">
-          We use cookies for basic analytics (via Google Analytics) to understand
-          how our site is used. No advertising or tracking cookies. Read our{" "}
-          <Link
-            href="/privacy"
-            className={`underline underline-offset-2 hover:text-foreground transition-colors rounded-sm ${FOCUS_RING}`}
-          >
-            privacy policy
-          </Link>
-          .
+      <p id="cookie-consent-desc" className="sr-only">
+        We use cookies for basic analytics (via Google Analytics) to understand
+        how our site is used. No advertising or tracking cookies.
+      </p>
+      <div className="mx-auto flex h-14 min-h-14 max-h-[72px] w-full max-w-6xl flex-row items-center gap-2 px-3 sm:gap-4 sm:px-6">
+        <p
+          className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+          aria-hidden="true"
+        >
+          Cookies for basic analytics. No ads.
         </p>
-        <div className="flex items-center gap-2 shrink-0">
+        <Link
+          href="/privacy"
+          className={`shrink-0 rounded-sm text-sm font-medium underline underline-offset-2 transition-colors hover:text-foreground ${FOCUS_RING}`}
+        >
+          Privacy Policy
+        </Link>
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={decline}
-            className={`rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors ${FOCUS_RING}`}
+            className={`min-h-11 rounded-lg border border-border px-4 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted ${FOCUS_RING}`}
           >
             Decline
           </button>
           <button
-            ref={acceptRef}
             type="button"
             onClick={accept}
-            className={`rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors ${FOCUS_RING}`}
+            className={`min-h-11 rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 ${FOCUS_RING}`}
           >
             Accept
           </button>

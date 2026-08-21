@@ -66,6 +66,23 @@ for (const rel of sources) {
   assert(/contrastText\(/.test(src), `${rel} uses shared contrastText`);
 }
 
+const dealCardSrc = readFileSync(join(repoRoot, "app/components/DealCard.tsx"), "utf8");
+assert(!/text-primary\/70/.test(dealCardSrc), "DealCard Save is not text-primary/70");
+assert(
+  /uppercase tracking-wider text-primary/.test(dealCardSrc),
+  "DealCard Save uses text-primary",
+);
+
+// Save label: --primary #4f46e5 on bg-primary/10 over white card (#edecfc).
+const saveFg = "#4f46e5";
+const saveBg = "#edecfc";
+const saveRatio = contrastRatioHex(saveFg, saveBg);
+assert(saveRatio !== null, "Save chip contrast computed");
+assert(
+  saveRatio >= MIN_CONTRAST_RATIO,
+  `Save chip ${saveFg} on ${saveBg} contrast ${saveRatio.toFixed(2)} < ${MIN_CONTRAST_RATIO}`,
+);
+
 console.log(
-  `OK: contrast AA ≥ ${MIN_CONTRAST_RATIO} on ${table.length} colors; local textColorFor deleted`
+  `OK: contrast AA ≥ ${MIN_CONTRAST_RATIO} on ${table.length} colors; Save ${saveRatio.toFixed(2)}:1; local textColorFor deleted`
 );

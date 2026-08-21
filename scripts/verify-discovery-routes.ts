@@ -4,6 +4,7 @@
  */
 import { GET as securityGet } from "../app/.well-known/security.txt/route";
 import { GET as humansGet } from "../app/humans.txt/route";
+import { GET as pricingGet } from "../app/pricing.md/route";
 import robots from "../app/robots";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -80,9 +81,21 @@ async function main() {
   assert(humText.includes("en-IN"), "humans locale");
   assert(humText.includes("Deals by Madhu Dadi"), "humans brand");
 
+  const pricing = await pricingGet();
+  assert(pricing.status === 200, `pricing.md status ${pricing.status}`);
+  assert(
+    (pricing.headers.get("Content-Type") || "").includes("text/markdown"),
+    "pricing.md content-type",
+  );
+  const pricingText = await pricing.text();
+  assert(pricingText.includes("Madhu Dadi"), "pricing.md author");
+  assert(pricingText.includes("https://madhudadi.in/"), "pricing.md hub identity");
+  assert(/free/i.test(pricingText), "pricing.md free directory");
+  assert(pricingText.includes("Deals by Madhu Dadi"), "pricing.md brand");
+
   mainRobots();
 
-  console.log("OK: security.txt + humans.txt + robots AI citation policy");
+  console.log("OK: security.txt + humans.txt + pricing.md + robots AI citation policy");
 }
 
 main().catch((err) => {

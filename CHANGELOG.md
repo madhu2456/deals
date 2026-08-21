@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-08-19
+
+### Residual wave (C60–C65)
+- No new residual-wave files. Leftover cookie strip work (`app/components/CookieConsent.tsx` and related leftover-wave UI) remains in the working tree and is not re-logged as residual.
+
 ## [Unreleased] — 2026-08-17
 
 ### Added
