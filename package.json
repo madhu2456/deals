@@ -38,34 +38,34 @@
     "test:all": "pnpm test:discovery && pnpm test:content && pnpm test:jsonld && pnpm test:format && pnpm test:contrast && pnpm test:cookie-consent && pnpm test:rate-limit && pnpm test:redis-limiter && pnpm test:pagination && pnpm test:seed-idempotency && pnpm test:sitemap-stability && pnpm test:approved-at && pnpm test:report-endpoint && pnpm test:click-origin && pnpm test:secret-scanner && pnpm test:turnstile-config && pnpm test:gtm-env && pnpm test:offer-checker && pnpm test:restore-scratch && pnpm exec tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "^1.6.0",
+    "@base-ui/react": "^1.7.0",
     "@prisma/client": "5.22.0",
-    "@radix-ui/react-slot": "^1.3.0",
+    "@radix-ui/react-slot": "^1.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "jose": "^6.2.3",
-    "lucide-react": "^1.24.0",
-    "next": "16.2.12",
+    "jose": "^6.2.9",
+    "lucide-react": "^1.31.0",
+    "next": "16.3.1",
     "next-themes": "^0.4.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "shadcn": "^4.13.0",
-    "sonner": "^2.0.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "shadcn": "^4.18.0",
+    "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^26",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.1",
     "prisma": "5.22.0",
     "tailwindcss": "^4",
-    "tsx": "^4.7.0",
-    "typescript": "^5"
+    "tsx": "^4.23.12",
+    "typescript": "^7"
   },
   "pnpm": {
     "overrides": {
