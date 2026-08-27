@@ -5,6 +5,7 @@
 import { GET as securityGet } from "../app/.well-known/security.txt/route";
 import { GET as humansGet } from "../app/humans.txt/route";
 import { GET as pricingGet } from "../app/pricing.md/route";
+import { GET as aiProfileGet } from "../app/ai-profile.json/route";
 import robots from "../app/robots";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -93,9 +94,23 @@ async function main() {
   assert(/free/i.test(pricingText), "pricing.md free directory");
   assert(pricingText.includes("Deals by Madhu Dadi"), "pricing.md brand");
 
+  const aiProf = await aiProfileGet();
+  assert(aiProf.status === 200, `ai-profile.json status ${aiProf.status}`);
+  const aiData = await aiProf.json();
+  assert(
+    Array.isArray(aiData.relatedProfiles) && aiData.relatedProfiles.length === 4,
+    "ai-profile.json relatedProfiles contains 4 URLs",
+  );
+  assert(
+    aiData.relatedProfiles.every(
+      (u: unknown) => typeof u === "string" && u.startsWith("https://") && u.endsWith("/ai-profile.json"),
+    ),
+    "ai-profile.json relatedProfiles valid URLs",
+  );
+
   mainRobots();
 
-  console.log("OK: security.txt + humans.txt + pricing.md + robots AI citation policy");
+  console.log("OK: security.txt + humans.txt + pricing.md + robots AI citation policy + ai-profile.json");
 }
 
 main().catch((err) => {

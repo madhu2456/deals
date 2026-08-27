@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME, PUBLISHER } from "@/lib/site";
+import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME, PUBLISHER, SEO_PARTNER } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -90,5 +90,11 @@ export async function GET() {
       publisher: PUBLISHER.url,
       blog: PUBLISHER.blog,
     },
+    relatedProfiles: [
+      `${PUBLISHER.url}/ai-profile.json`,
+      `${PUBLISHER.blog}/ai-profile.json`,
+      `${PUBLISHER.udemyEnroller}/ai-profile.json`,
+      `${SEO_PARTNER.url}/ai-profile.json`,
+    ],
   });
 }
