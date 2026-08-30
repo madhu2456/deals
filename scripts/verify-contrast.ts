@@ -83,6 +83,22 @@ assert(
   `Save chip ${saveFg} on ${saveBg} contrast ${saveRatio.toFixed(2)} < ${MIN_CONTRAST_RATIO}`,
 );
 
+// FM-038 AAA 7:1 badges/chips — pinned audit colors
+const aaaChecks: Array<{ fg: string; bg: string; min: number; label: string }> = [
+  { fg: "#7A1FA2", bg: "#ffffff", min: 7, label: "AAA badge #7A1FA2 on white" },
+  { fg: "#024A8A", bg: "#ffffff", min: 7, label: "AAA badge #024A8A on white" },
+];
+for (const { fg, bg, min, label } of aaaChecks) {
+  const r = contrastRatioHex(fg, bg);
+  assert(r !== null, `${label}: ratio computed`);
+  assert(r >= min, `${label}: ${r.toFixed(2)} < ${min}`);
+}
+// Expected pinned ratios from audit: #7A1FA2 8.25, #024A8A 8.94
+const r1 = contrastRatioHex("#7A1FA2", "#ffffff");
+const r2 = contrastRatioHex("#024A8A", "#ffffff");
+assert(r1 !== null && Math.abs(r1 - 8.25) < 0.3, `#7A1FA2 ratio ${r1?.toFixed(2)} not ~8.25`);
+assert(r2 !== null && Math.abs(r2 - 8.94) < 0.3, `#024A8A ratio ${r2?.toFixed(2)} not ~8.94`);
+
 console.log(
-  `OK: contrast AA ≥ ${MIN_CONTRAST_RATIO} on ${table.length} colors; Save ${saveRatio.toFixed(2)}:1; local textColorFor deleted`
+  `OK: contrast AA ≥ ${MIN_CONTRAST_RATIO} on ${table.length} colors; Save ${saveRatio.toFixed(2)}:1; AAA #7A1FA2 ${r1?.toFixed(2)}:1 #024A8A ${r2?.toFixed(2)}:1; local textColorFor deleted`
 );
