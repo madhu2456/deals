@@ -316,7 +316,10 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={clearHref}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/30 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  // WCAG AA hover: destructive #dc2626/#ef4444 on bg-card is
+                  // 4.83:1/4.25:1 (dark fails) — red-700 (6.47:1 light) /
+                  // red-300 (8.42:1 dark) restore ≥4.5:1 on actual bgs.
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/30 hover:text-red-700 dark:hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                   Clear filters

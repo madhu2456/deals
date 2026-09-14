@@ -87,12 +87,12 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
           <Input id="title" name="title" defaultValue={deal?.title} required />
-          {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
+          {errors.title && <p className="text-sm text-red-700 dark:text-red-300">{errors.title}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="brandName">Brand Name *</Label>
           <Input id="brandName" name="brandName" defaultValue={deal?.brandName} required />
-          {errors.brandName && <p className="text-sm text-destructive">{errors.brandName}</p>}
+          {errors.brandName && <p className="text-sm text-red-700 dark:text-red-300">{errors.brandName}</p>}
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
           defaultValue={deal?.description}
           required
         />
-        {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
+        {errors.description && <p className="text-sm text-red-700 dark:text-red-300">{errors.description}</p>}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -123,7 +123,7 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
               ))}
             </SelectContent>
           </Select>
-          {errors.categoryId && <p className="text-sm text-destructive">{errors.categoryId}</p>}
+          {errors.categoryId && <p className="text-sm text-red-700 dark:text-red-300">{errors.categoryId}</p>}
         </div>
 
         <div className="space-y-2">
@@ -146,12 +146,12 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
         <div className="space-y-2">
           <Label htmlFor="dealUrl">Deal URL *</Label>
           <Input id="dealUrl" name="dealUrl" type="url" defaultValue={deal?.dealUrl} required />
-          {errors.dealUrl && <p className="text-sm text-destructive">{errors.dealUrl}</p>}
+          {errors.dealUrl && <p className="text-sm text-red-700 dark:text-red-300">{errors.dealUrl}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="brandUrl">Brand URL</Label>
           <Input id="brandUrl" name="brandUrl" type="url" defaultValue={deal?.brandUrl || ""} />
-          {errors.brandUrl && <p className="text-sm text-destructive">{errors.brandUrl}</p>}
+          {errors.brandUrl && <p className="text-sm text-red-700 dark:text-red-300">{errors.brandUrl}</p>}
         </div>
       </div>
 
@@ -228,12 +228,12 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
                 : ""
             }
           />
-          {errors.expiryDate && <p className="text-sm text-destructive">{errors.expiryDate}</p>}
+          {errors.expiryDate && <p className="text-sm text-red-700 dark:text-red-300">{errors.expiryDate}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="logoUrl">Logo URL</Label>
           <Input id="logoUrl" name="logoUrl" type="url" defaultValue={deal?.logoUrl || ""} />
-          {errors.logoUrl && <p className="text-sm text-destructive">{errors.logoUrl}</p>}
+          {errors.logoUrl && <p className="text-sm text-red-700 dark:text-red-300">{errors.logoUrl}</p>}
         </div>
       </div>
 
@@ -249,9 +249,12 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
         </Label>
       </div>
 
-      {errors.form && (
-        <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{errors.form}</p>
-      )}
+        {/* WCAG AA: text-destructive (#dc2626) on bg-destructive/10 over page bg is
+            3.80:1 (light) / 4.61:1 (dark) — text-red-700/dark:text-red-300 restore
+            ≥4.5:1 (5.10:1 / 9.15:1) on the composited backgrounds. */}
+        {errors.form && (
+          <p className="rounded-lg bg-destructive/10 p-3 text-sm text-red-700 dark:text-red-300">{errors.form}</p>
+        )}
 
       <div className="flex items-center gap-3 pt-4">
         <Button type="submit" disabled={pending}>

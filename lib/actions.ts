@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
+import { isAdmin2faEnabled } from "@/lib/admin-2fa";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
@@ -320,6 +321,8 @@ export async function submitDealAction(formData: FormData) {
 export async function loginAdminAction(formData: FormData) {
   const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
+  const totpCode = String(formData.get("totpCode") || "");
+  const turnstileToken = String(formData.get("cf-turnstile-response") || "").trim();
 
   if (!username || !password) {
     return { success: false as const, error: "Username and password are required" };
@@ -339,7 +342,34 @@ export async function loginAdminAction(formData: FormData) {
     };
   }
 
-  const result = await loginAdmin(username, password);
+  // F021: when 2FA is on, the login form also carries the Turnstile widget —
+  // verify the token with the same siteverify call the submit flow uses
+  // (fail-closed; never logs the secret or full token). RPN-24: the
+  // half-config state must fail closed here too (mirrors submit) —
+  // silently skipping the widget would silently weaken login.
+  if (turnstileMisconfigured && process.env.NODE_ENV === "production") {
+    console.error(
+      "[turnstile] rejecting admin login: half-configured (only one of SECRET/SITE key is set)"
+    );
+    return { success: false as const, error: GENERIC };
+  }
+  if (isAdmin2faEnabled() && turnstileEnabled) {
+    if (!turnstileToken) {
+      return {
+        success: false as const,
+        error: "Bot verification failed. Please reload and try again.",
+      };
+    }
+    const ok = await verifyTurnstileToken(turnstileToken, ip);
+    if (!ok) {
+      return {
+        success: false as const,
+        error: "Bot verification failed. Please reload and try again.",
+      };
+    }
+  }
+
+  const result = await loginAdmin(username, password, totpCode);
   if (!result.success) {
     return { success: false as const, error: result.error };
   }

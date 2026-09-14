@@ -170,10 +170,61 @@ as_root() {
   fi
 }
 
+# F018 / critic C2: fail-closed pre-deploy backup freshness gate.
+# Runs on the --update path BEFORE compose up: if the newest backup
+# (encrypted *.db.enc / *.db.age or legacy *.db) is missing or older than
+# MAX_AGE_HOURS (default 26h = daily 03:15 UTC cron + 2h slack), the deploy
+# ABORTS — no image is built and no container is recreated over a stale or
+# missing backup chain. First-time bootstrap is exempt (no data exists yet
+# to protect; the gate would be unsatisfiable before the first backup).
+# Verdict order: host BACKUP_DIR (default /var/backups/deals, the documented
+# production layout) is authoritative when present; otherwise the named-volume
+# layout is checked via container exec (/app/data/backups). Both missing/
+# stale/unreachable ⇒ abort.
+backup_freshness_gate() {
+  local max_age="${MAX_AGE_HOURS:-26}"
+  local backup_dir="${BACKUP_DIR:-/var/backups/deals}"
+
+  echo "  Backup freshness gate (fail-closed; MAX_AGE_HOURS=${max_age})..."
+
+  if [ -d "${backup_dir}" ]; then
+    if BACKUP_DIR="${backup_dir}" MAX_AGE_HOURS="${max_age}" \
+      "${APP_DIR}/scripts/verify_backup_freshness.sh"; then
+      echo "  Backup freshness gate: PASS (host ${backup_dir})"
+      return 0
+    fi
+    echo "ABORT: newest backup in ${backup_dir} is missing or older than ${max_age}h." >&2
+    echo "  The deploy is blocked (fail-closed, F018/critic C2): fix the backup" >&2
+    echo "  chain first — check the cron (/var/log/deals-backup.log), run a manual" >&2
+    echo "  backup (BACKUP_ENCRYPTION_KEY set, see docs/ops/backup-restore.md)," >&2
+    echo "  then re-run: ./deploy.sh --update" >&2
+    echo "  Escape hatch (backups live only in the named volume): docker cp" >&2
+    echo "  deals-app:/app/data/backups/. /var/backups/deals — then re-run." >&2
+    exit 1
+  fi
+
+  # Named-volume deployment: backups live inside the volume at /app/data/backups.
+  if (cd "${APP_DIR}" && docker compose exec -T deals sh -c "BACKUP_DIR=/app/data/backups MAX_AGE_HOURS=${max_age} /app/scripts/verify_backup_freshness.sh"); then
+    echo "  Backup freshness gate: PASS (named volume /app/data/backups)"
+    return 0
+  fi
+  echo "ABORT: no fresh backup found (host dir ${backup_dir} absent; container" >&2
+  echo "  /app/data/backups check failed or the container is not running)." >&2
+  echo "  The deploy is blocked (fail-closed, F018/critic C2): restore the backup" >&2
+  echo "  chain (see docs/ops/backup-restore.md), then re-run: ./deploy.sh --update" >&2
+  echo "  Escape hatch (volume-only backups): docker cp" >&2
+  echo "  deals-app:/app/data/backups/. ${backup_dir} — then re-run." >&2
+  exit 1
+}
+
 # Idempotent host crontab for SQLite backup + freshness (F-DEAL-004).
 # Re-runs replace the marked entries instead of duplicating them. Uses the
 # documented production layout: backups in /var/backups/deals (the same
 # default verify_backup_freshness.sh watches), logs in /var/log/deals-backup.log.
+# Alerting (critic must-add, mirrors install_offer_checker_cron): failures
+# surface via cron mail — the freshness entry echoes an alert line OUTSIDE the
+# log redirect on non-zero exit, mailed by cron to MAILTO (default: crontab
+# owner; override with BACKUP_MAILTO=you@example.com before the re-run).
 # Deployment-type detection: when docker-compose.yml mounts the named volume
 # deals_data:/app/data, the live DB is unreachable from the host, so the
 # container (docker compose exec) variants are installed — the scripts run
@@ -235,25 +286,57 @@ install_backup_cron() {
     echo "  Copy files out for offsite/restore work, e.g.: docker cp deals-app:/app/data/backups/<file> ."
   fi
 
+  # F018: backups are encrypted and FAIL CLOSED without a key. Tell the
+  # operator exactly where the key must live for the installed variant, so
+  # the cron does not silently start failing after this deploy.
+  echo ""
+  if [ "${use_exec_variant}" -eq 1 ]; then
+    if grep -q '^BACKUP_ENCRYPTION_KEY=' "${APP_DIR}/.env" 2>/dev/null; then
+      echo "  .env carries BACKUP_ENCRYPTION_KEY — the container (exec) backup cron can encrypt."
+    else
+      echo "  ACTION REQUIRED (F018): backups fail closed without a key. Generate one"
+      echo "  (openssl rand -base64 32) and set BACKUP_ENCRYPTION_KEY in"
+      echo "  ${APP_DIR}/.env (compose env_file bakes it into the container),"
+      echo "  then re-run: ./deploy.sh --update  — until then the 03:15 backup cron FAILS."
+    fi
+  else
+    if [ -n "${BACKUP_ENCRYPTION_KEY:-}" ]; then
+      echo "  BACKUP_ENCRYPTION_KEY present in this shell — ensure it is also in the"
+      echo "  chmod 600 env file the crontab entry sources (e.g. /etc/deals/backup.env)."
+    else
+      echo "  ACTION REQUIRED (F018): backups fail closed without a key. Generate one"
+      echo "  (openssl rand -base64 32) and set BACKUP_ENCRYPTION_KEY in a chmod 600"
+      echo "  file (e.g. /etc/deals/backup.env), then prefix the 03:15 crontab entry"
+      echo "  with '. /etc/deals/backup.env &&' — until then the 03:15 backup cron FAILS."
+    fi
+  fi
+
   # Idempotent rewrite: drop previous deals-backup entries, keep the rest.
   local tmp
   tmp="$(mktemp)"
   if ! crontab -l 2>/dev/null | grep -v -e 'deals-sqlite-backup' -e 'deals-backup-freshness' -e 'backup-sqlite.sh' -e 'verify_backup_freshness.sh' >"${tmp}"; then
     : >"${tmp}"
   fi
+  # Alert mail target (critic must-add): cron mails the freshness FAIL echo
+  # below to this address; default = crontab owner (cron's own fallback).
+  if [ -n "${BACKUP_MAILTO:-}" ]; then
+    cat >>"${tmp}" <<EOF
+MAILTO="${BACKUP_MAILTO}"
+EOF
+  fi
   if [ "${use_exec_variant}" -eq 1 ]; then
     cat >>"${tmp}" <<EOF
 # deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC; container exec)
-15 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1
+15 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'DATABASE_URL=file:/app/data/deals.db BACKUP_DIR=/app/data/backups /app/scripts/backup-sqlite.sh' >>/var/log/deals-backup.log 2>&1; rc=\$?; if [ \${rc} -ne 0 ]; then echo "deals backup FAILED (exit \${rc}) — see /var/log/deals-backup.log"; fi
 # deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC; container exec)
-45 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups MAX_AGE_HOURS=26 /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd ${APP_DIR} && docker compose exec -T deals sh -c 'BACKUP_DIR=/app/data/backups MAX_AGE_HOURS=26 /app/scripts/verify_backup_freshness.sh' >>/var/log/deals-backup.log 2>&1; rc=\$?; if [ \${rc} -ne 0 ]; then echo "deals backup freshness FAILED (exit \${rc}) — backup chain stale/missing, see /var/log/deals-backup.log"; fi
 EOF
   else
     cat >>"${tmp}" <<EOF
 # deals-sqlite-backup (deploy.sh --install-backup-cron; daily 03:15 UTC)
-15 3 * * * cd ${APP_DIR} && DATABASE_URL=${db_url} BACKUP_DIR=${backup_dir} ./scripts/backup-sqlite.sh >>/var/log/deals-backup.log 2>&1
+15 3 * * * cd ${APP_DIR} && DATABASE_URL=${db_url} BACKUP_DIR=${backup_dir} ./scripts/backup-sqlite.sh >>/var/log/deals-backup.log 2>&1; rc=\$?; if [ \${rc} -ne 0 ]; then echo "deals backup FAILED (exit \${rc}) — see /var/log/deals-backup.log"; fi
 # deals-backup-freshness (deploy.sh --install-backup-cron; daily 03:45 UTC)
-45 3 * * * cd ${APP_DIR} && BACKUP_DIR=${backup_dir} MAX_AGE_HOURS=26 ./scripts/verify_backup_freshness.sh >>/var/log/deals-backup.log 2>&1
+45 3 * * * cd ${APP_DIR} && BACKUP_DIR=${backup_dir} MAX_AGE_HOURS=26 ./scripts/verify_backup_freshness.sh >>/var/log/deals-backup.log 2>&1; rc=\$?; if [ \${rc} -ne 0 ]; then echo "deals backup freshness FAILED (exit \${rc}) — backup chain stale/missing, see /var/log/deals-backup.log"; fi
 EOF
   fi
   if ! crontab "${tmp}"; then
@@ -533,7 +616,7 @@ if [ "${MODE}" = "help" ]; then
   echo "  --help                    Show this help"
   echo ""
   echo "Env: DEPLOY_USER, REPO_URL, BRANCH, DOMAIN, APP_PORT, APP_DIR,"
-  echo "     BACKUP_DIR, BACKUP_DATABASE_URL, OFFER_CHECK_MAILTO (see docs/ops/offer-checker.md)"
+  echo "     BACKUP_DIR, BACKUP_DATABASE_URL, BACKUP_MAILTO, OFFER_CHECK_MAILTO (see docs/ops/offer-checker.md)"
   exit 0
 fi
 
@@ -559,6 +642,12 @@ if [ "${MODE}" = "update" ]; then
   pull_or_clone
   ensure_env
   chmod +x "${APP_DIR}/deploy.sh" "${APP_DIR}/docker/entrypoint.sh" 2>/dev/null || true
+
+  # F018 / critic C2: fail-closed backup freshness gate — BEFORE compose up.
+  # A stale or missing backup chain aborts the deploy; no image is built and
+  # no container is recreated until a fresh (encrypted) backup is proven.
+  backup_freshness_gate
+
   compose_up
   # Copy nginx/*.conf from this repo into sites-available on every deploy
   install_nginx_from_repo

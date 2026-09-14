@@ -185,10 +185,13 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
 
       {/* Timestamp for bot detection — created on first render */}
       <input type="hidden" name="timestamp" value={String(timestamp)} />
+      {/* WCAG AA: text-destructive (#dc2626) on bg-destructive/5 over page bg is
+          4.10:1 (light) / 4.81:1 (dark) — text-red-700/dark:text-red-300 restore
+          ≥4.5:1 (5.49:1 / 9.55:1) on the composited backgrounds. */}
       {formError && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-red-700 dark:text-red-300"
         >
           {formError}
         </div>
@@ -196,7 +199,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
       {errorKeys.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-red-700 dark:text-red-300"
         >
           <p className="font-medium">Please fix the following:</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
@@ -224,7 +227,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               id="title-error"
               ref={firstErrorKey === "title" ? firstErrorRef : undefined}
               tabIndex={-1}
-              className="text-sm text-destructive outline-none"
+              className="text-sm text-red-700 outline-none dark:text-red-300"
             >
               {errors.title}
             </p>
@@ -247,7 +250,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               id="brandName-error"
               ref={firstErrorKey === "brandName" ? firstErrorRef : undefined}
               tabIndex={-1}
-              className="text-sm text-destructive outline-none"
+              className="text-sm text-red-700 outline-none dark:text-red-300"
             >
               {errors.brandName}
             </p>
@@ -275,7 +278,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               id="dealUrl-error"
               ref={firstErrorKey === "dealUrl" ? firstErrorRef : undefined}
               tabIndex={-1}
-              className="text-sm text-destructive outline-none"
+              className="text-sm text-red-700 outline-none dark:text-red-300"
             >
               {errors.dealUrl}
             </p>
@@ -306,7 +309,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               id="categoryId-error"
               ref={firstErrorKey === "categoryId" ? firstErrorRef : undefined}
               tabIndex={-1}
-              className="text-sm text-destructive outline-none"
+              className="text-sm text-red-700 outline-none dark:text-red-300"
             >
               {errors.categoryId}
             </p>
@@ -378,7 +381,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
             id="description-error"
             ref={firstErrorKey === "description" ? firstErrorRef : undefined}
             tabIndex={-1}
-            className="text-sm text-destructive outline-none"
+            className="text-sm text-red-700 outline-none dark:text-red-300"
           >
             {errors.description}
           </p>
@@ -420,7 +423,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               id="submittedByEmail-error"
               ref={firstErrorKey === "submittedByEmail" ? firstErrorRef : undefined}
               tabIndex={-1}
-              className="text-sm text-destructive outline-none"
+              className="text-sm text-red-700 outline-none dark:text-red-300"
             >
               {errors.submittedByEmail}
             </p>

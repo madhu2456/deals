@@ -5,6 +5,11 @@
 # Usage:
 #   CONFIRM=YES scripts/restore-sqlite.sh /path/to/deals-20260809T120000Z.db
 #   CONFIRM=YES DATABASE_URL=file:/app/data/deals.db scripts/restore-sqlite.sh ./backups/deals-....db
+#   CONFIRM=YES BACKUP_ENCRYPTION_KEY=... scripts/restore-sqlite.sh ./backups/deals-....db.enc
+#
+# Encrypted backups (F018): *.db.enc requires BACKUP_ENCRYPTION_KEY (openssl),
+# *.db.age requires BACKUP_AGE_KEYFILE (age) — fail-closed without the key.
+# Legacy plaintext *.db backups still restore directly.
 #
 # Safety (critic C3):
 #   - CONFIRM=YES is required (refuse otherwise)
@@ -12,9 +17,20 @@
 #     file, if present, causes refuse-until-removed
 #   - Pre-restore copy of live DB is kept; WAL/SHM removed only after replace
 #
-# Steps: CONFIRM → integrity_check → pre-restore copy → atomic replace → drop WAL → integrity_check.
+# Steps: CONFIRM → (decrypt if encrypted) → integrity_check → pre-restore copy
+#        → atomic replace → drop WAL → integrity_check.
 # Exit: 0 success, 1 failure, 2 usage.
 set -euo pipefail
+
+# F018: guarantee the decrypted scratch copy is removed on ANY exit (success,
+# failure, signal) — plaintext never rests outside the restore window.
+DECRYPT_TMP=""
+cleanup_scratch() {
+  if [[ -n "${DECRYPT_TMP:-}" && -f "${DECRYPT_TMP}" ]]; then
+    rm -f -- "${DECRYPT_TMP}"
+  fi
+}
+trap cleanup_scratch EXIT INT TERM
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -44,6 +60,47 @@ BACKUP_SRC="$1"
 if [[ ! -f "${BACKUP_SRC}" ]]; then
   echo "error: backup file not found: ${BACKUP_SRC}" >&2
   exit 1
+fi
+
+# --- F018: symmetric decrypt for encrypted backups (fail-closed) -----------
+# Decrypt to a scratch file under the system temp dir, integrity-check it,
+# then restore from the scratch copy; the decrypted plaintext lives only for
+# the duration of this restore and is deleted on both success and failure.
+RESTORE_SRC="${BACKUP_SRC}"
+if [[ "${BACKUP_SRC}" == *.db.enc ]]; then
+  if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+    echo "error: ${BACKUP_SRC} is encrypted — BACKUP_ENCRYPTION_KEY is not set (F018 fail-closed)" >&2
+    echo "hint: restore the key from the password manager, then re-run with BACKUP_ENCRYPTION_KEY=<key>" >&2
+    exit 1
+  fi
+  DECRYPT_TMP="$(mktemp "${TMPDIR:-/tmp}/deals-restore-decrypted-XXXXXX.db")"
+  # -pass env: reads the process environment, not the shell variable — make a
+  # locally-assigned (unexported) key work too.
+  export BACKUP_ENCRYPTION_KEY
+  if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -in "${BACKUP_SRC}" -out "${DECRYPT_TMP}" -pass env:BACKUP_ENCRYPTION_KEY; then
+    echo "error: openssl decrypt failed (wrong key or corrupt backup?) — refusing restore" >&2
+    rm -f -- "${DECRYPT_TMP}"
+    exit 1
+  fi
+  RESTORE_SRC="${DECRYPT_TMP}"
+  echo "[restore] decrypted ${BACKUP_SRC##*/} to scratch ${DECRYPT_TMP}"
+elif [[ "${BACKUP_SRC}" == *.db.age ]]; then
+  if [[ -z "${BACKUP_AGE_KEYFILE:-}" ]]; then
+    echo "error: ${BACKUP_SRC} is age-encrypted — BACKUP_AGE_KEYFILE is not set (F018 fail-closed)" >&2
+    exit 1
+  fi
+  if [[ ! -f "${BACKUP_AGE_KEYFILE}" ]]; then
+    echo "error: BACKUP_AGE_KEYFILE not found: ${BACKUP_AGE_KEYFILE} (F018 fail-closed)" >&2
+    exit 1
+  fi
+  DECRYPT_TMP="$(mktemp "${TMPDIR:-/tmp}/deals-restore-decrypted-XXXXXX.db")"
+  if ! age -d -i "${BACKUP_AGE_KEYFILE}" -o "${DECRYPT_TMP}" "${BACKUP_SRC}"; then
+    echo "error: age decrypt failed (wrong keyfile or corrupt backup?) — refusing restore" >&2
+    rm -f -- "${DECRYPT_TMP}"
+    exit 1
+  fi
+  RESTORE_SRC="${DECRYPT_TMP}"
+  echo "[restore] decrypted ${BACKUP_SRC##*/} to scratch ${DECRYPT_TMP}"
 fi
 
 sqlite_integrity() {
@@ -103,7 +160,7 @@ mkdir -p "${DB_DIR}"
 echo "[restore] source=${BACKUP_SRC}"
 echo "[restore] target=${DB_PATH}"
 
-CHECK="$(sqlite_integrity "${BACKUP_SRC}")"
+CHECK="$(sqlite_integrity "${RESTORE_SRC}")"
 if [[ "${CHECK}" != "ok" ]]; then
   echo "error: integrity_check failed on backup (refusing restore): ${CHECK}" >&2
   exit 1
@@ -111,7 +168,7 @@ fi
 
 # Atomic-ish replace: copy to temp beside target, then mv
 TMP="${DB_PATH}.restore.$$"
-cp -f "${BACKUP_SRC}" "${TMP}"
+cp -f "${RESTORE_SRC}" "${TMP}"
 # Re-check the staged copy
 CHECK2="$(sqlite_integrity "${TMP}")"
 if [[ "${CHECK2}" != "ok" ]]; then
@@ -142,4 +199,12 @@ if [[ "${FINAL}" != "ok" ]]; then
 fi
 
 echo "[restore] integrity_check=ok"
+# F018: scratch decrypted copy (if any) is removed only after the restore
+# succeeded — a failed restore above exits set -e before this line, but the
+# trap below still guarantees cleanup on any exit path.
+if [[ -n "${DECRYPT_TMP:-}" && -f "${DECRYPT_TMP}" ]]; then
+  rm -f -- "${DECRYPT_TMP}"
+  echo "[restore] scratch decrypted copy removed"
+fi
+
 echo "[restore] done — restart the app (e.g. docker compose start deals)."

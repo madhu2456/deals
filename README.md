@@ -155,6 +155,7 @@ See [`.env.example`](./.env.example). Important:
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin login |
 | `ADMIN_SECRET` | JWT signing secret (≥ 32 chars) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL for sitemap, OG, schema |
+| `ADMIN_2FA_ENABLED` | TOTP 2FA on `/admin/login` (default `false`; flip runbook: [docs/ops/admin-2fa.md](./docs/ops/admin-2fa.md)) |
 
 ### Cloudflare Turnstile (production, optional)
 
@@ -165,12 +166,6 @@ Bot protection for `/submit`. Keys are env-only — never commit real values.
    - `TURNSTILE_SECRET_KEY` — server-side secret (verify token)
    - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — public site key (widget)
 3. Deploy. Parity is fail-closed: with both keys set the server verifies the
-   token and the form renders the widget; with neither set the form falls back
-   to honeypot + timing checks; setting **exactly one** key is a
-   misconfiguration and production rejects submissions until the second key is
-   added (`lib/actions.ts`). `pnpm test:turnstile-config` enforces the parity
-   rule in CI.
-4. Deploy. Parity is fail-closed: with both keys set the server verifies the
    token and the form renders the widget; with neither set the form falls back
    to honeypot + timing checks; setting **exactly one** key is a
    misconfiguration and production rejects submissions until the second key is
@@ -222,5 +217,5 @@ Visibility work is supported by **[Adticks](https://adticks.com)** (SEO & GEO).
 
 ## License
 
-Private / all rights reserved unless otherwise noted.  
+Released under the [MIT License](./LICENSE).  
 © Madhu Dadi — [madhudadi.in](https://madhudadi.in)

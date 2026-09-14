@@ -76,6 +76,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@madhu245",
+    creator: "@madhu245",
     title: `${SITE_NAME} — Verified Deals, Coupons & Discounts`,
     description: SITE_DESCRIPTION,
     images: [defaultOgImage()],

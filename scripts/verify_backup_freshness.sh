@@ -6,13 +6,22 @@
 set -euo pipefail
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/deals}"
 MAX_AGE_HOURS="${MAX_AGE_HOURS:-26}"
-# Final published backups only — not *.db.tmp, LAST_SUCCESS, or sidecars.
-BACKUP_GLOB="${BACKUP_GLOB:-deals-*.db}"
+# Final published backups only — not *.db.tmp, *.db.plain.tmp, *.verify.tmp,
+# LAST_SUCCESS, or sidecars. F018: encrypted backups publish as *.db.enc
+# (openssl) or *.db.age (age); legacy pre-F018 plaintext backups are *.db —
+# all three count, whichever is newest.
+BACKUP_GLOB="${BACKUP_GLOB:-deals-*.db.enc deals-*.db.age deals-*.db}"
 if [[ ! -d "$BACKUP_DIR" ]]; then
   echo "FAIL: backup dir missing: $BACKUP_DIR" >&2
   exit 2
 fi
-newest=$(find "$BACKUP_DIR" -maxdepth 1 -type f -name "$BACKUP_GLOB" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 || true)
+# Build the find -name expression from the space-separated glob list
+GLOB_ARGS=()
+for g in ${BACKUP_GLOB}; do
+  GLOB_ARGS+=( -name "$g" -o )
+done
+unset 'GLOB_ARGS[${#GLOB_ARGS[@]}-1]'  # drop the trailing -o
+newest=$(find "$BACKUP_DIR" -maxdepth 1 -type f \( "${GLOB_ARGS[@]}" \) -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 || true)
 if [[ -z "${newest:-}" ]]; then
   echo "FAIL: no backups matching $BACKUP_GLOB in $BACKUP_DIR" >&2
   exit 1

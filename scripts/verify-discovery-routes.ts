@@ -7,6 +7,10 @@ import { GET as humansGet } from "../app/humans.txt/route";
 import { GET as pricingGet } from "../app/pricing.md/route";
 import { GET as aiProfileGet } from "../app/ai-profile.json/route";
 import robots from "../app/robots";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const repoRoot = join(__dirname, "..");
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -54,6 +58,33 @@ function mainRobots() {
       (Array.isArray(dis) && dis.includes("/*"));
     assert(blocked, `${bot} should disallow /`);
   }
+
+  // D3: the catch-all group must also fence off admin + API for every
+  // crawler that is not named above (Bingbot, Yandex, …).
+  const starRule = list.find((r) => ruleAgents(r).includes("*"));
+  assert(starRule, "robots has a * catch-all rule");
+  const starDis = starRule.disallow;
+  const starDisList = Array.isArray(starDis) ? starDis : starDis ? [starDis] : [];
+  for (const path of ["/admin", "/api"]) {
+    assert(
+      starDisList.some((d) => d === path || d === `${path}/`),
+      `robots * rule disallows ${path} (got [${starDisList.join(", ")}])`,
+    );
+  }
+}
+
+/** D3: pin the twitter card metadata in the root layout source. */
+function mainTwitterMeta() {
+  const layoutSrc = readFileSync(join(repoRoot, "app", "layout.tsx"), "utf8");
+  assert(
+    /card:\s*"summary_large_image"/.test(layoutSrc),
+    "layout twitter card is summary_large_image",
+  );
+  const siteHandle = layoutSrc.match(/twitter:\s*\{[\s\S]*?\}/)?.[0] ?? "";
+  assert(
+    /site:\s*"@(?:madhu245)"/.test(siteHandle),
+    "layout twitter metadata declares the site handle",
+  );
 }
 
 async function main() {
@@ -109,8 +140,9 @@ async function main() {
   );
 
   mainRobots();
+  mainTwitterMeta();
 
-  console.log("OK: security.txt + humans.txt + pricing.md + robots AI citation policy + ai-profile.json");
+  console.log("OK: security.txt + humans.txt + pricing.md + robots AI citation policy + ai-profile.json + robots * admin/api fence + twitter card meta");
 }
 
 main().catch((err) => {

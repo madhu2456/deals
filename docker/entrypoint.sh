@@ -11,7 +11,7 @@ mkdir -p /tmp/npm-cache /tmp/cache /app/data
 export DATABASE_URL="${DATABASE_URL:-file:/app/data/deals.db}"
 
 echo "[deals] DATABASE_URL=${DATABASE_URL}"
-echo "[deals] Running Prisma migrations..."
+echo "[deals] Running Prisma migrations (up-only: migrate deploy — see F018 contract above)..."
 
 PRISMA_BIN="./node_modules/.bin/prisma"
 if [ ! -x "$PRISMA_BIN" ]; then
@@ -19,6 +19,13 @@ if [ ! -x "$PRISMA_BIN" ]; then
   exit 1
 fi
 
+# Prisma migrations are UP-ONLY in production (F018): `migrate deploy` applies
+# pending forward migrations and is the ONLY migration path that ever touches
+# this database. `migrate dev` (package.json db:migrate) is a LOCAL-DEV-ONLY
+# command — it can prompt for / auto-generate destructive reset drift and must
+# never run against /app/data/deals.db. Rollback = image revert + encrypted
+# backup restore (docs/ops/backup-restore.md "Migrate-fail runbook"), never a
+# down-migration.
 "$PRISMA_BIN" migrate deploy
 
 # Seed ONLY on explicit first-time provisioning (RUN_SEED=true). deploy.sh

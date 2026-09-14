@@ -59,3 +59,20 @@ model Deal {
   @@index([slug])
   @@map("deals")
 }
+
+// F021: TOTP 2FA enrollment for the admin login (single-admin deployment —
+// env credentials, no users table). Singleton row keyed by subject="admin".
+// totpSecret is AES-256-GCM encrypted at rest (lib/admin-2fa.ts, per-row
+// random scrypt salt — SEC-02); recoveryCodes is a JSON array of SHA-256
+// {hash, usedAt} digests — never plaintext codes.
+model Admin2FA {
+  id               String   @id @default(cuid())
+  subject          String   @unique
+  totpSecret       String
+  lastUsedTimestep Int? // SEC-01 replay guard: last successfully-used TOTP timestep; a code whose timestep ≤ it is rejected
+  recoveryCodes    String   @default("[]")
+  enrolledAt       DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("admin_2fa")
+}

@@ -102,6 +102,12 @@ BACKUP_DIR="${WORK_DIR}/backups"
 RESTORE_TARGET="${WORK_DIR}/deals-restored.db"
 mkdir -p "${BACKUP_DIR}"
 
+# F018: backup-sqlite.sh encrypts at rest and fails closed without a key.
+# The drill therefore generates an EPHEMERAL scratch key (deleted with the
+# workdir on exit) so the drill proves the full encrypted
+# backup → decrypt → restore → integrity path, exactly like production.
+export BACKUP_ENCRYPTION_KEY="${BACKUP_ENCRYPTION_KEY:-$(openssl rand -base64 32)}"
+
 # 2. Deploy Prisma migrations to fresh scratch DB
 echo "[verify-restore-scratch] Deploying migrations to scratch DB..."
 DATABASE_URL="file:${SCRATCH_DB}" "${PRISMA_CMD[@]}" migrate deploy

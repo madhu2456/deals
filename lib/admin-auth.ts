@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAdmin2faEnabled, verifyAdminSecondFactor } from "@/lib/admin-2fa";
 
 const COOKIE_NAME = "admin-session";
 const DEFAULT_TTL_HOURS = 24;
@@ -48,12 +49,29 @@ function getJwtTtlHours(): number {
   return Math.min(n, 24 * 30);
 }
 
-export async function loginAdmin(username: string, password: string) {
+export async function loginAdmin(
+  username: string,
+  password: string,
+  totpCode?: string,
+  verifyTotpFn?: (code: string, secret: Buffer) => number | null
+) {
   const creds = getCredentials();
   const userOk = safeEqual(username, creds.username);
   const passOk = safeEqual(password, creds.password);
   if (!userOk || !passOk) {
-    return { success: false, error: "Invalid credentials" };
+    return { success: false as const, error: "Invalid credentials" };
+  }
+
+  // F021 2FA — env-gated, default-off. With ADMIN_2FA_ENABLED unset/false
+  // this block is dead code: login behaves exactly as pre-F021.
+  if (isAdmin2faEnabled()) {
+    if (!totpCode || !totpCode.trim()) {
+      return { success: false as const, error: "2FA code is required" };
+    }
+    const ok = await verifyAdminSecondFactor(totpCode, verifyTotpFn);
+    if (!ok) {
+      return { success: false as const, error: "Invalid 2FA code" };
+    }
   }
 
   const ttlHours = getJwtTtlHours();

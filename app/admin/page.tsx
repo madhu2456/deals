@@ -127,7 +127,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       {deal.brokenReportCount > 0 && (
                         <Badge
                           variant="outline"
-                          className="mt-1 border-destructive/40 text-destructive"
+                          // WCAG AA: text-destructive (#ef4444) on card #1e1b4b is
+                          // 4.25:1 in dark — text-red-700/dark:text-red-300 restore
+                          // ≥4.5:1 (6.47:1 light / 8.42:1 dark).
+                          className="mt-1 border-destructive/40 text-red-700 dark:text-red-300"
                           title={
                             deal.brokenReportedAt
                               ? `First reported ${formatDate(deal.brokenReportedAt)}`
