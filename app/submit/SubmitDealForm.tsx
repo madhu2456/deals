@@ -176,7 +176,7 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
   const firstErrorKey = errorKeys[0];
 
   return (
-    <form action={handleSubmit} className="space-y-6" noValidate>
+    <form action={handleSubmit} method="post" className="space-y-6" noValidate>
       {/* Honeypot — hidden from humans, bots fill it */}
       <div className="absolute -left-[9999px] opacity-0" aria-hidden="true">
         <label htmlFor="website">Website</label>

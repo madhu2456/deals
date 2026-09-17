@@ -117,7 +117,7 @@ export function LoginForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} method="post" className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
         <Input id="username" name="username" autoComplete="username" required />

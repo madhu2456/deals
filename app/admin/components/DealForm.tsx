@@ -82,7 +82,7 @@ export function DealForm({ deal, categories, action, submitLabel = "Save Deal" }
   }
 
   return (
-    <form action={handleSubmit} className="mx-auto max-w-3xl space-y-6">
+    <form action={handleSubmit} method="post" className="mx-auto max-w-3xl space-y-6">
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
