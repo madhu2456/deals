@@ -118,6 +118,17 @@ export function Footer() {
                   <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
                 </a>
               </li>
+              <li>
+                <a
+                  href="https://televault.madhudadi.in/"
+                  target="_blank"
+                  rel="noopener noreferrer me"
+                  className={externalLinkClass}
+                >
+                  TeleVault — Zero-Disk Telegram Streamer
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+                </a>
+              </li>
             </ul>
           </div>
         </div>
