@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { buildCsp, generateNonce, NONCE_HEADER } from "@/lib/csp";
 
 const ADMIN_COOKIE = "admin-session";
 
@@ -51,6 +52,28 @@ function getSecret() {
 }
 
 /**
+ * Per-request CSP + nonce. Sets the policy on the forwarded REQUEST headers
+ * (Next's `getScriptNonceFromHeader` reads it back and stamps the nonce onto
+ * its inline bootstrap scripts — without this, hydration never runs) AND on
+ * the RESPONSE headers (so the browser actually enforces the policy).
+ *
+ * Redirect/410 responses intentionally skip this: they carry no HTML scripts,
+ * and the browser re-requests the target URL, which runs this same path.
+ */
+function nextWithCsp(request: NextRequest): NextResponse {
+  const nonce = generateNonce();
+  const csp = buildCsp(nonce);
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(NONCE_HEADER, nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
+}
+
+/**
  * Previously-approved deals that have since expired return 410 Gone.
  * Churn-prone coupon URLs: 410 tells Google the specific coupon is gone so it
  * deindexes fast, without the soft-404 signal of a recurring 404. The header
@@ -79,11 +102,12 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Matcher scopes this to /deals/:slug (single segment); the page handles
-  // everything that is not an expired, previously-approved deal.
+  // Deal detail pages (/deals/<single-segment>). The matcher now covers every
+  // HTML route (for the CSP nonce), so guard the single-segment shape here:
+  // deeper paths are not deal slugs and must not trigger a DB lookup.
   if (pathname.startsWith("/deals/")) {
     const slug = pathname.slice("/deals/".length);
-    if (await isExpiredApprovedDeal(slug)) {
+    if (slug && !slug.includes("/") && (await isExpiredApprovedDeal(slug))) {
       return new NextResponse(null, {
         status: 410,
         headers: { "X-Robots-Tag": "noindex, follow" },
@@ -91,13 +115,17 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return undefined; // fall through to the page
+  // Every other HTML route: attach the nonce CSP.
+  return nextWithCsp(request);
 }
 
-// Both keys exported: the build validates `matcher` (singular) into the
+// Runs on every HTML route so each document gets a fresh nonce. Excludes API
+// route handlers and any asset/text response (paths ending in an extension,
+// plus the Next build/image asset trees) — those carry no executable HTML.
+// Both keys are exported: the build validates `matcher` (singular) into the
 // functions-config manifest, while the runtime loader reads `matchers`
 // (plural) from the compiled chunk when the manifest entry is absent.
 export const config = {
-  matcher: ["/admin/:path*", "/deals/:slug"],
-  matchers: ["/admin/:path*", "/deals/:slug"],
+  matcher: ["/((?!api(?:/|$)|_next(?:/|$)|.*\\.[\\w]+$).*)"],
+  matchers: ["/((?!api(?:/|$)|_next(?:/|$)|.*\\.[\\w]+$).*)"],
 };

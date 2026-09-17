@@ -1,30 +1,9 @@
 import type { NextConfig } from "next";
 
-const csp = [
-  "default-src 'self'",
-  // Turnstile widget (when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set) loads from
-  // challenges.cloudflare.com — allow script + frame so enabling keys does not break CSP.
-  "script-src 'self' https://www.googletagmanager.com https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline'",
-  // Merchant logos and deal images come from external CDNs — restrict to HTTPS.
-  "img-src 'self' data: https:",
-  "font-src 'self'",
-  // Turnstile widget POSTs challenges to challenges.cloudflare.com — allow
-  // connect-src so enabling NEXT_PUBLIC_TURNSTILE_SITE_KEY does not break CSP.
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://challenges.cloudflare.com",
-  "frame-src 'self' https://www.googletagmanager.com https://challenges.cloudflare.com",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-  // CSP violation reporting (D4): report-uri is the active channel
-  // (report-to csp-endpoint needs a Reporting-Endpoints header, which the
-  // shared blog pattern deliberately omits — browsers fall back to
-  // report-uri). Collector: app/api/csp-report/route.ts.
-  "report-uri /api/csp-report",
-  "report-to csp-endpoint",
-].join("; ");
+// NOTE: Content-Security-Policy is NOT set here. It carries a per-request
+// script nonce (Next's inline bootstrap scripts must run for hydration), so it
+// is emitted from proxy.ts via lib/csp.ts. Setting a static CSP here would
+// duplicate/conflict with the nonce policy and re-break hydration.
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -51,7 +30,6 @@ const securityHeaders = [
     key: "Cross-Origin-Embedder-Policy",
     value: "unsafe-none",
   },
-  { key: "Content-Security-Policy", value: csp },
 ];
 
 const nextConfig: NextConfig = {
@@ -143,36 +121,47 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Public marketing/listing pages — edge cache for 15 min, serve stale for 24h
+      // HTML pages carry a PER-REQUEST CSP nonce (lib/csp.ts / proxy.ts), so they
+      // must NOT be shared-cached: a cache that stores and replays a nonce'd
+      // document hands the same nonce to many users, which lets an attacker read
+      // the cached nonce and reuse it — defeating the XSS protection the nonce
+      // exists to provide. (Cloudflare currently returns cf-cache-status DYNAMIC
+      // for HTML, i.e. it does not cache these today; this makes that safe
+      // outcome explicit and immune to a later "Cache Everything" rule.)
+      //
+      // These routes are force-dynamic with per-request DB reads regardless, so
+      // they already render per request; the private/no-store directive matches
+      // Next's own default for dynamic pages and only removes the (unsafe)
+      // invitation to an intermediary cache.
       {
         source: "/",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
+          { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
           { key: "Vary", value: "Cookie" },
         ],
       },
       {
         source: "/deals",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
+          { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
         ],
       },
       {
         source: "/categories",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
+          { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
         ],
       },
       {
         source: "/categories/:slug*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
+          { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
         ],
       },
       {
         source: "/deals/:slug*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=900, stale-while-revalidate=86400" },
+          { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
         ],
       },
     ];

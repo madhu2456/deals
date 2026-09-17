@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -24,6 +25,7 @@ import {
   SITE_KEYWORDS,
   SITE_NAME,
 } from "@/lib/site";
+import { NONCE_HEADER } from "@/lib/csp";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -115,11 +117,17 @@ export const viewport: Viewport = {
 /** Consent Mode v2 default-deny — must run in <head> before any GTM/tag loads. */
 const CONSENT_DEFAULT_SCRIPT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});gtag('set','ads_data_redaction',true);gtag('set','url_passthrough',true);`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Per-request nonce minted in proxy.ts (lib/csp.ts). Reading headers() also
+  // makes every route dynamic, which is REQUIRED here: a statically-prerendered
+  // document would embed a build-time (or empty) nonce that never matches the
+  // per-request CSP, re-breaking hydration.
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
+
   return (
     <html
       lang="en-IN"
@@ -128,6 +136,7 @@ export default function RootLayout({
       <head>
         {/* Consent Mode default denied BEFORE GTM (portfolio Consent Mode pattern) */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: CONSENT_DEFAULT_SCRIPT }}
         />
       </head>

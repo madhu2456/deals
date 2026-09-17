@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   test:
-    name: Twelve Pre-Deploy Quality Gates
+    name: Thirteen Pre-Deploy Quality Gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -60,7 +60,7 @@ jobs:
         run: pnpm exec prisma generate
 
       # Only after `pnpm audit --prod` is 0 high with exact postcss/sharp pins (F301).
-      - name: Gate 12 - Production SCA (high)
+      - name: Gate 13 - Production SCA (high)
         run: pnpm audit --prod --audit-level=high
 
       - name: Gate 1 - JSON-LD + price-parser regression fixtures
@@ -113,12 +113,19 @@ jobs:
       - name: Gate 9 - Turnstile config parity + widget code path
         run: pnpm test:turnstile-config
 
+      # Hydration guard (regression: static script-src 'self' with no nonce
+      # blocked Next's inline bootstrap scripts → React #412 → the whole site
+      # was inert). Feeds the emitted CSP through Next's OWN nonce parser to
+      # prove the nonce round-trips; also asserts proxy/layout wiring.
+      - name: Gate 10 - CSP nonce wiring (hydration)
+        run: pnpm test:csp-nonce
+
       # DB-free static guard: GTM-PT2ZHD3W stays out of app/lib/Dockerfile/
       # .env.example, and empty NEXT_PUBLIC_GTM_ID returns no script/noscript.
-      - name: Gate 10 - GTM env-only / empty=off
+      - name: Gate 11 - GTM env-only / empty=off
         run: pnpm test:gtm-env
 
-      - name: Gate 11 - Type safety
+      - name: Gate 12 - Type safety
         run: pnpm exec tsc --noEmit
 
   deploy:

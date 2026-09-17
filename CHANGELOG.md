@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — 2026-09-04
 
+### Fixed
+- **CSP nonce (critical hydration outage)**: the static `script-src 'self'` CSP (no nonce, no `'unsafe-inline'`) blocked Next's inline hydration bootstrap scripts, so hydration never ran (React error #412) and every client component went inert — cookie banner undismissable, submit/admin-login forms dead, Consent Mode v2 default-deny never executed. Fix: per-request nonce minted in `proxy.ts` (`lib/csp.ts` — CSP set on both the forwarded request so Next stamps its bootstrap scripts, and the response so the browser enforces it); root layout reads the nonce via `x-nonce` and stamps the inline consent script; all routes forced dynamic so no static document embeds a stale nonce; nonce'd HTML switched from `public, s-maxage=900` to `private, no-store` (a shared cache replaying one nonce to many users would defeat the nonce). Gate `pnpm test:csp-nonce` proves the round-trip through Next's own nonce parser and fails on the original policy.
+
 ### Added
 - **F018 — Encrypted SQLite backups + deploy gate**: `scripts/backup-sqlite.sh` (age-encrypted dumps), `scripts/restore-sqlite.sh`, freshness verification (`verify_backup_freshness.sh`), scratch-restore drill (`test:restore-scratch`); `deploy.sh` blocks release when the latest verified backup exceeds the freshness window. Runbook: `docs/ops/backup-restore.md`.
 - **F021 — Admin TOTP 2FA (env-gated, default off)**: `lib/totp.ts` (RFC 6238), `lib/admin-2fa.ts` (AES-256-GCM at-rest, scrypt + salt, recovery codes, replay guard), `admin_2fa` migration, enrollment CLI (`pnpm admin:2fa-enroll`), gate `pnpm test:admin-2fa`. `ADMIN_2FA_ENABLED=false` keeps the pre-F021 login flow byte-for-byte. Runbook: `docs/ops/admin-2fa.md`.
