@@ -38,6 +38,14 @@ On the production single host (Netcup/DO box), Deals and Enroller share the box.
 - Host freshness script default is still **48 h** until new scripts deploy; the 26 h check above was explicit.
 - Documented `deploy.sh --install-backup-cron` does **not** match this host (it would target in-volume `/app/data/backups` or missing `/opt/deals/data`). **Do not** run it blindly — leave the working `_data` → `/var/backups/deals` cron in place.
 
+## Production host layout (as of 2026-09-17 — supersedes the 2026-08-16 note above)
+
+- The pre-Sep-2026 root-run cron is gone (no madhu crontab, no root entries, no log when investigated 2026-09-17). Backups are now madhu-owned end to end.
+- Live DB: Docker named volume `deals_deals_data`. madhu cannot read `/var/lib/docker/volumes/...` directly (root-owned — a host-side `sqlite3` against the `_data` file fails with "database not found"), so the backup runs INSIDE the container where `/app/data` is native.
+- Cron (madhu, `crontab -l`): hybrid — 03:15 UTC `docker compose exec -T deals ... backup-sqlite.sh` (key from the container env, baked out of server `.env` at deploy time) → `/app/data/backups`, then `docker cp deals-app:/app/data/backups/. /var/backups/deals`, then a host-side `find ... -mtime +14 -delete` mirroring the script's retention (the script only sweeps its own `BACKUP_DIR`). 03:45 UTC freshness check on `/var/backups/deals` (`MAX_AGE_HOURS=26`). Both log to `/var/log/deals-backup.log` (madhu-owned) and echo alerts outside the redirect on failure.
+- `/var/backups/deals` is `madhu:madhu` / 700 (repaired 2026-09-17; was root-owned residue). The deploy freshness gate watches this dir.
+- Do NOT switch this host to `--install-backup-cron` auto-detect: it would install container-only entries writing where the gate doesn't look, re-creating the Sep-2026 deploy block.
+
 ## Prerequisites
 
 - `sqlite3` CLI installed on the host or in the container
