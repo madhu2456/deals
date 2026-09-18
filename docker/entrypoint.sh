@@ -28,6 +28,16 @@ fi
 # down-migration.
 "$PRISMA_BIN" migrate deploy
 
+# SQLite WAL mode & PRAGMA configuration (CRIT-02 / DEF-DEALS-WAL-01)
+SQLITE_DB_PATH=$(echo "$DATABASE_URL" | sed -E 's|^file:||; s|\?.*$||')
+SQLITE_DB_PATH="${SQLITE_DB_PATH:-/app/data/deals.db}"
+
+if command -v sqlite3 >/dev/null 2>&1; then
+  echo "[deals] Configuring SQLite PRAGMAs on $SQLITE_DB_PATH..."
+  sqlite3 "$SQLITE_DB_PATH" "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=10000; PRAGMA foreign_keys=ON;"
+  chmod 664 "${SQLITE_DB_PATH}"* 2>/dev/null || true
+fi
+
 # Seed ONLY on explicit first-time provisioning (RUN_SEED=true). deploy.sh
 # bootstrap writes RUN_SEED=true when .env is first created and flips it to
 # false after the first container start, so routine --update deploys never

@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-09-18
+
+### Added
+- **Dynamic IndexNow Key Route & Next.js Rewrite (`app/api/indexnow/route.ts`, `next.config.ts`)**: Added dynamic IndexNow key verification endpoint with Next.js rewrite matching `/:key([a-zA-Z0-9-]{8,128})\.txt` to `/api/indexnow?key=:key`, returning `INDEXNOW_KEY` in plain text for Bing/Yandex search crawler ownership validation (T-W1-03 / DEF-DEALS-INDEXNOW-02).
+- **Dual Machine Discovery Links (`app/layout.tsx`)**: Injected canonical `<link rel="ai-profile" type="application/json" href="/ai-profile.json">` and `<link rel="llms" type="text/plain" href="/llms.txt">` into root HTML `<head>` (T-W1-05 / F-SEO-07).
+
+### Changed
+- **SQLite Concurrency & WAL Hardening (`docker/entrypoint.sh`)**: Configured SQLite PRAGMA journal mode to `WAL`, synchronous mode to `NORMAL`, `busy_timeout` to `10000ms`, and enabled foreign keys on startup to prevent lock contention under concurrent load (T-W0-02 / CRIT-02 / DEF-DEALS-WAL-01).
+- **Prisma Client Busy Timeout (`lib/prisma.ts`)**: Configured Prisma database URL with `busy_timeout=10000`, `socket_timeout=10`, and `connection_limit=1` URI parameters to prevent locks during Next.js static prerendering (T-W0-03 / DEF-DEALS-BUSY-02).
+- **Sitemap Legal & Contact Routes (`app/sitemap.ts`)**: Added static routes `/accessibility`, `/contact`, `/privacy`, and `/terms` using `SITE_STATIC_LAST_MODIFIED` for deterministic lastmod stability (T-W1-02 / DEF-DEALS-SITEMAP-01); updated `scripts/verify-sitemap-stability.ts`.
+- **RFC 9309 Crawler Policy Hardening (`app/robots.ts`)**: Standardized `CRAWLER_DISALLOW` to include `/ws/` alongside `/admin`, `/admin/`, `/api/`, and `/api` across all crawler declarations (T-W1-04 / F-SEO-01).
+
 ## [Unreleased] — 2026-09-04
 
 ### Fixed

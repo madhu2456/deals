@@ -134,6 +134,8 @@ export default async function RootLayout({
       className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="ai-profile" type="application/json" href="/ai-profile.json" />
+        <link rel="llms" type="text/plain" href="/llms.txt" />
         {/* Consent Mode default denied BEFORE GTM (portfolio Consent Mode pattern) */}
         <script
           nonce={nonce}

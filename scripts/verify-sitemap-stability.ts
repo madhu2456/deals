@@ -141,8 +141,8 @@ async function main(): Promise<void> {
   );
   assertEqual(
     (sitemapSrc.match(/lastModified:\s*SITE_STATIC_LAST_MODIFIED/g) ?? []).length,
-    5,
-    "all 5 static routes stamp SITE_STATIC_LAST_MODIFIED (stable content date)"
+    9,
+    "all 9 static routes stamp SITE_STATIC_LAST_MODIFIED (stable content date)"
   );
   assert(
     sitemapSrc.includes("${site}/about"),

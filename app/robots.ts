@@ -15,6 +15,8 @@ import { getSiteUrl } from "@/lib/site";
  * guarantees citation (Allow ≠ cited) — the AI-profile/llms.txt content is
  * what earns citations.
  */
+const CRAWLER_DISALLOW = ["/admin", "/admin/", "/api/", "/api", "/ws/"];
+
 export default function robots(): MetadataRoute.Robots {
   const site = getSiteUrl();
 
@@ -23,69 +25,69 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       // Google Search
       {
         userAgent: "Googlebot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       // AI citation / search crawlers (NOT training)
       {
         userAgent: "OAI-SearchBot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "ChatGPT-User",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "PerplexityBot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Perplexity-User",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Claude-SearchBot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Claude-User",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Claude-Web",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Google-Extended",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "GoogleOther",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Bingbot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       {
         userAgent: "Applebot",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/api"],
+        disallow: CRAWLER_DISALLOW,
       },
       // Training-only crawlers — blocked
       {

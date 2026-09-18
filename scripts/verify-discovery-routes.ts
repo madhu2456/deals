@@ -6,6 +6,8 @@ import { GET as securityGet } from "../app/.well-known/security.txt/route";
 import { GET as humansGet } from "../app/humans.txt/route";
 import { GET as pricingGet } from "../app/pricing.md/route";
 import { GET as aiProfileGet } from "../app/ai-profile.json/route";
+import { GET as indexnowGet } from "../app/api/indexnow/route";
+import { NextRequest } from "next/server";
 import robots from "../app/robots";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -138,6 +140,18 @@ async function main() {
     ),
     "ai-profile.json relatedProfiles valid URLs",
   );
+
+  // IndexNow verification endpoint
+  process.env.INDEXNOW_KEY = "test-indexnow-key-12345";
+  const inReqValid = new NextRequest("https://deals.madhudadi.in/api/indexnow?key=test-indexnow-key-12345");
+  const inResValid = await indexnowGet(inReqValid);
+  assert(inResValid.status === 200, `indexnow valid key status ${inResValid.status}`);
+  const inTextValid = await inResValid.text();
+  assert(inTextValid === "test-indexnow-key-12345", "indexnow valid key body matches");
+
+  const inReqInvalid = new NextRequest("https://deals.madhudadi.in/api/indexnow?key=wrong-key-12345");
+  const inResInvalid = await indexnowGet(inReqInvalid);
+  assert(inResInvalid.status === 404, `indexnow wrong key status ${inResInvalid.status}`);
 
   mainRobots();
   mainTwitterMeta();
