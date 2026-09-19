@@ -95,6 +95,7 @@ export async function GET() {
       `${PUBLISHER.blog}/ai-profile.json`,
       `${PUBLISHER.udemyEnroller}/ai-profile.json`,
       `${SEO_PARTNER.url}/ai-profile.json`,
+      `${PUBLISHER.televault}/ai-profile.json`,
     ],
   });
 }

@@ -131,8 +131,8 @@ async function main() {
   assert(aiProf.status === 200, `ai-profile.json status ${aiProf.status}`);
   const aiData = await aiProf.json();
   assert(
-    Array.isArray(aiData.relatedProfiles) && aiData.relatedProfiles.length === 4,
-    "ai-profile.json relatedProfiles contains 4 URLs",
+    Array.isArray(aiData.relatedProfiles) && aiData.relatedProfiles.length === 5,
+    "ai-profile.json relatedProfiles contains 5 URLs",
   );
   assert(
     aiData.relatedProfiles.every(

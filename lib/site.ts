@@ -59,6 +59,7 @@ export const PUBLISHER = {
   profile: "https://madhudadi.in/profile/",
   blog: "https://madhudadi.in/blog",
   udemyEnroller: "https://udemyenroller.madhudadi.in",
+  televault: "https://televault.madhudadi.in",
 };
 
 export const SEO_PARTNER = {

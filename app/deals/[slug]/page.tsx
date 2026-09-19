@@ -43,33 +43,33 @@ interface DealPageProps {
 export const dynamic = "force-dynamic";
 
 /**
- * Absolute title ≤ ~70 chars: drop brand+long template stacking. Long titles
- * are shortened WITHOUT an ellipsis (F233): first strip trailing clauses
- * (dash/pipe/colon separated) so the core reads as a complete phrase; only if
- * it is still over budget, hard-truncate at the last word boundary. A
- * truncated clause ending in an ellipsis character reads as an error; a
- * dropped clause reads as a shorter title.
+ * Absolute title ≤ 60 chars (MF-03): prefer full suffix, fall back to short suffix,
+ * and truncate offer while preserving brand when separated by dash/pipe.
  */
 function dealDocumentTitle(dealTitle: string): string {
-  const suffix = ` | ${SITE_NAME}`;
-  const maxCore = Math.max(24, 68 - suffix.length);
-  let core = dealTitle.replace(/\.{2,}|…/g, "").trim();
-  if (core.length > maxCore) {
-    core = core
-      .replace(/\s*[—–|]\s*.*$/, "")
-      .replace(/\s*[:：]\s*.*$/, "")
-      .trimEnd();
-    if (core.length > maxCore) {
-      core = core
-        .slice(0, maxCore)
-        .replace(/\s+\S*$/, "")
-        .replace(/[|–—-]\s*$/, "")
-        .trimEnd();
+  const fullSuffix = ` | ${SITE_NAME}`;
+  const shortSuffix = ` | ${SITE_NAME_SHORT}`;
+  let clean = dealTitle.replace(/\.{2,}|…/g, "").replace(/[.,;:\s|–—-]+$/, "").trim();
+  if (!clean) return SITE_NAME;
+  if (`${clean}${fullSuffix}`.length <= 60) return `${clean}${fullSuffix}`;
+  if (`${clean}${shortSuffix}`.length <= 60) return `${clean}${shortSuffix}`;
+  const maxCore = 60 - shortSuffix.length;
+  const dashMatch = clean.match(/^([^—–|]+)[—–|]\s*(.+)$/);
+  if (dashMatch) {
+    const brand = dashMatch[1].trim();
+    const offer = dashMatch[2].trim();
+    const avail = maxCore - (brand.length + 3);
+    if (avail > 10) {
+      const truncatedOffer = offer.slice(0, avail).replace(/\s+\S*$/, "").trimEnd();
+      clean = `${brand} — ${truncatedOffer}`;
+    } else {
+      clean = clean.slice(0, maxCore).replace(/\s+\S*$/, "").trimEnd();
     }
+  } else {
+    clean = clean.slice(0, maxCore).replace(/\s+\S*$/, "").trimEnd();
   }
-  // Ensure no trailing punctuation or literal dots remain before the suffix
-  core = core.replace(/[.,;:\s|–—-]+$/, "").trimEnd();
-  return `${core}${suffix}`;
+  clean = clean.replace(/[.,;:\s|–—-]+$/, "").trimEnd();
+  return `${clean || SITE_NAME_SHORT}${shortSuffix}`;
 }
 
 export async function generateMetadata({ params }: DealPageProps): Promise<Metadata> {

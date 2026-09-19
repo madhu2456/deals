@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-09-19
+
+### Added
+- **TeleVault Integration in Site Configuration (`lib/site.ts`)**: Added `televault: "https://televault.madhudadi.in"` to `PUBLISHER` configuration.
+- **Cross-Ecosystem 5-Peer Related Profiles & Verification (`app/ai-profile.json/route.ts`, `scripts/verify-discovery-routes.ts`)**: Added TeleVault's AI profile URL to `relatedProfiles` in `ai-profile.json`, establishing 5-peer reciprocal discovery, and updated discovery route verification suite to assert all 5 profiles.
+- **Technology Stack Truth & Related Product Linkage (`lib/llms-body.ts`)**: Added explicit technology stack truth (`Next.js 16, TypeScript, Tailwind CSS 4, Prisma ORM, SQLite`) and linked TeleVault as a related product in LLMs discovery output.
+
+### Changed
+- **Hardened Deal Title Truncation with Brand-Clause Splitting (`app/deals/[slug]/page.tsx`)**: Hardened `dealDocumentTitle` to strictly enforce $\le 60$ character absolute document titles (MF-03), intelligently splitting dash/pipe delimited brand and offer clauses to preserve the brand name while trimming long offer descriptions without trailing ellipses.
+
 ## [Unreleased] — 2026-09-18
 
 ### Added

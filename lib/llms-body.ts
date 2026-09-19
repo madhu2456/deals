@@ -87,9 +87,11 @@ ${dealLines || "- (none yet)"}
 - Price to use the site: Free
 - Verification: Public deals are reviewed (status APPROVED)
 - Coupon codes: Optional; some offers use a link only
+- Technology stack: Next.js 16, TypeScript, Tailwind CSS 4, Prisma ORM, SQLite
 - Founder: ${PUBLISHER.name} — ${PUBLISHER.profile}
 - Blog: ${PUBLISHER.blog}
 - Related product: Udemy Course Enroller — ${PUBLISHER.udemyEnroller}
+- Related product: TeleVault — ${PUBLISHER.televault}
 - SEO & GEO partner: ${SEO_PARTNER.name} — ${SEO_PARTNER.url}
 - Source: https://github.com/madhu2456/deals
 
