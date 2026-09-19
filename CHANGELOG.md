@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Prisma Client Busy Timeout (`lib/prisma.ts`)**: Configured Prisma database URL with `busy_timeout=10000`, `socket_timeout=10`, and `connection_limit=1` URI parameters to prevent locks during Next.js static prerendering (T-W0-03 / DEF-DEALS-BUSY-02).
 - **Sitemap Legal & Contact Routes (`app/sitemap.ts`)**: Added static routes `/accessibility`, `/contact`, `/privacy`, and `/terms` using `SITE_STATIC_LAST_MODIFIED` for deterministic lastmod stability (T-W1-02 / DEF-DEALS-SITEMAP-01); updated `scripts/verify-sitemap-stability.ts`.
 - **RFC 9309 Crawler Policy Hardening (`app/robots.ts`)**: Standardized `CRAWLER_DISALLOW` to include `/ws/` alongside `/admin`, `/admin/`, `/api/`, and `/api` across all crawler declarations (T-W1-04 / F-SEO-01).
+- **IndexNow Endpoint Fail-Closed URL Parser, Request Signature Widening & Case Verification (`app/api/indexnow/route.ts`, `scripts/verify-discovery-routes.ts`)**: Hardened `app/api/indexnow/route.ts` against malformed URLs by wrapping URL parsing in a fail-closed `try/catch` with fallback base URL (`http://localhost`) returning 404, widened handler signature to accept `NextRequest | Request` for uniform caller ergonomics, and supported case-insensitive key verification. Expanded test assertions in `scripts/verify-discovery-routes.ts` verifying uppercase key resolution (MIN-02).
 
 ## [Unreleased] — 2026-09-04
 

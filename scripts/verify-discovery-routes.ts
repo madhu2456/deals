@@ -149,6 +149,12 @@ async function main() {
   const inTextValid = await inResValid.text();
   assert(inTextValid === "test-indexnow-key-12345", "indexnow valid key body matches");
 
+  const inReqUpper = new NextRequest("https://deals.madhudadi.in/api/indexnow?key=TEST-INDEXNOW-KEY-12345");
+  const inResUpper = await indexnowGet(inReqUpper);
+  assert(inResUpper.status === 200, `indexnow uppercase key status ${inResUpper.status}`);
+  const inTextUpper = await inResUpper.text();
+  assert(inTextUpper === "test-indexnow-key-12345", "indexnow uppercase key body matches");
+
   const inReqInvalid = new NextRequest("https://deals.madhudadi.in/api/indexnow?key=wrong-key-12345");
   const inResInvalid = await indexnowGet(inReqInvalid);
   assert(inResInvalid.status === 404, `indexnow wrong key status ${inResInvalid.status}`);

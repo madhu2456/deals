@@ -3,10 +3,20 @@ import { type NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const KEY_RE = /^[a-zA-Z0-9-]{8,128}$/;
-
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const requestedKey = searchParams.get("key");
+export async function GET(request: NextRequest | Request) {
+  let requestedKey: string | null = null;
+  try {
+    const { searchParams } = new URL(request.url, "http://localhost");
+    requestedKey = searchParams.get("key");
+  } catch {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=60, s-maxage=60",
+      },
+    });
+  }
 
   if (!requestedKey || !KEY_RE.test(requestedKey)) {
     return new NextResponse("Not Found", {
@@ -18,8 +28,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const configuredKey = process.env.INDEXNOW_KEY;
-  if (!configuredKey || !KEY_RE.test(configuredKey) || requestedKey !== configuredKey) {
+  const configuredKey = process.env.INDEXNOW_KEY?.trim();
+  if (
+    !configuredKey ||
+    !KEY_RE.test(configuredKey) ||
+    requestedKey.toLowerCase() !== configuredKey.toLowerCase()
+  ) {
     return new NextResponse("Not Found", {
       status: 404,
       headers: {
