@@ -31,6 +31,20 @@ function toRfc822(date: Date): string {
   return date.toUTCString();
 }
 
+function formatRssDiscount(discountType: string, discountValue?: string | null): string {
+  if (discountType === "FREE_TIER") {
+    if (
+      !discountValue ||
+      /^(?:0(?:\.0+)?|100(?:\.0+)?|\d+\.\d+)%?$/i.test(discountValue.trim()) ||
+      /^free$/i.test(discountValue.trim())
+    ) {
+      return "100% OFF";
+    }
+    return discountValue;
+  }
+  return discountValue ?? "";
+}
+
 export async function GET() {
   const site = getSiteUrl();
   const now = new Date();
@@ -51,6 +65,7 @@ export async function GET() {
         slug: true,
         shortDescription: true,
         description: true,
+        discountType: true,
         discountValue: true,
         discountedPrice: true,
         couponCode: true,
@@ -62,16 +77,13 @@ export async function GET() {
 
     for (const deal of deals) {
       const title = escapeXml(deal.title);
-      const link = absoluteUrl(`/deals/${deal.slug}`);
+      const link = escapeXml(absoluteUrl(`/deals/${deal.slug}`));
       const guid = link;
-      const brand = deal.brandName ? escapeXml(deal.brandName) : "";
-      const discount = deal.discountValue
-        ? escapeXml(deal.discountValue)
-        : "";
-      const code = deal.couponCode ? escapeXml(deal.couponCode) : "";
-      const category = deal.category?.name
-        ? escapeXml(deal.category.name)
-        : "Deals";
+      const brand = deal.brandName || "";
+      const rawDiscount = formatRssDiscount(deal.discountType, deal.discountValue);
+      const discount = rawDiscount || "";
+      const code = deal.couponCode || "";
+      const category = escapeXml(deal.category?.name || "Deals");
 
       const summary = [
         deal.shortDescription || deal.description,

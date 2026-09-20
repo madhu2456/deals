@@ -231,7 +231,14 @@ export function DealCard({ deal }: DealCardProps) {
           size="sm"
           className="min-h-10 shrink-0 gap-1.5 px-3.5 shadow-sm"
         >
-          <Link href={href}>
+          <Link
+            href={href}
+            aria-label={
+              deal.couponCode
+                ? `View ${deal.title} deal and coupon code`
+                : `View ${deal.title} deal`
+            }
+          >
             View
             <ArrowRight
               className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"

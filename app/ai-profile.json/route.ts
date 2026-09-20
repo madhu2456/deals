@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME, PUBLISHER, SEO_PARTNER } from "@/lib/site";
+import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME, SITE_STATIC_LAST_MODIFIED, PUBLISHER, SEO_PARTNER } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export async function GET() {
   const site = getSiteUrl();
-  const now = new Date().toISOString();
 
-  const [dealCount, categoryCount] = await Promise.all([
+  const [dealCount, categoryCount, latestDeal] = await Promise.all([
     prisma.deal.count({
       where: {
         status: "APPROVED",
@@ -27,7 +26,19 @@ export async function GET() {
         },
       },
     }),
+    prisma.deal.findFirst({
+      where: {
+        status: "APPROVED",
+        OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true },
+    }),
   ]);
+
+  const lastUpdated = latestDeal?.updatedAt
+    ? latestDeal.updatedAt.toISOString()
+    : SITE_STATIC_LAST_MODIFIED;
 
   return NextResponse.json({
     "@context": "https://schema.org",
@@ -79,7 +90,7 @@ export async function GET() {
     stats: {
       approvedDeals: dealCount,
       activeCategories: categoryCount,
-      lastUpdated: now,
+      lastUpdated,
     },
     endpoints: {
       llmsFeed: `${site}/llms.txt`,

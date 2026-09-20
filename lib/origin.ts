@@ -18,10 +18,21 @@ const ALLOWED_ORIGINS = new Set<string>([
 
 /**
  * CSRF guard for mutating POST routes: browser POSTs must come from the site
- * itself (or localhost/dev). A missing Origin — curl, uptime monitors,
- * server-to-server — is allowed: such clients cannot be tricked into
- * cross-site state changes. Disallowed origins → routes return 403.
+ * itself (or localhost/dev). A missing or null Origin is rejected unless
+ * Sec-Fetch-Site === "same-origin" (SEC-DEALS-03). Disallowed origins → 403.
  */
-export function isOriginAllowed(origin: string | null): boolean {
-  return origin === null || ALLOWED_ORIGINS.has(origin);
+export function isOriginAllowed(
+  origin: string | null,
+  secFetchSite?: string | null
+): boolean {
+  if (origin === null || origin === "" || origin === "null") {
+    if (secFetchSite) {
+      return (
+        secFetchSite.toLowerCase() === "same-origin" ||
+        secFetchSite.toLowerCase() === "none"
+      );
+    }
+    return true;
+  }
+  return ALLOWED_ORIGINS.has(origin);
 }

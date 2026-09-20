@@ -414,7 +414,9 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
             aria-required="true"
             aria-invalid={!!errors.submittedByEmail}
             aria-describedby={
-              errors.submittedByEmail ? "submittedByEmail-error" : undefined
+              errors.submittedByEmail
+                ? "submittedByEmail-error submittedByEmail-notice"
+                : "submittedByEmail-notice"
             }
             className="h-11"
           />
@@ -428,6 +430,13 @@ export function SubmitDealForm({ categories }: { categories: Category[] }) {
               {errors.submittedByEmail}
             </p>
           )}
+          <p id="submittedByEmail-notice" className="mt-1.5 text-xs text-muted-foreground">
+            Your email is collected solely to manage and verify your deal submission per our{" "}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Privacy Policy
+            </Link>
+            . You may request data erasure at any time.
+          </p>
         </div>
       </div>
 

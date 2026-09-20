@@ -4,8 +4,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAdmin2faEnabled, verifyAdminSecondFactor } from "@/lib/admin-2fa";
 
-const COOKIE_NAME = "admin-session";
+export const COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-admin-session" : "admin-session";
 const DEFAULT_TTL_HOURS = 24;
+
+export function getCookieName(): string {
+  return process.env.NODE_ENV === "production" ? "__Host-admin-session" : "admin-session";
+}
 
 function getSecret() {
   const secret = process.env.ADMIN_SECRET;
@@ -82,10 +87,10 @@ export async function loginAdmin(
     .sign(getSecret());
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
+  cookieStore.set(getCookieName(), token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: ttlHours * 60 * 60,
   });
@@ -95,12 +100,22 @@ export async function loginAdmin(
 
 export async function logoutAdmin() {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(getCookieName());
+  cookieStore.delete("admin-session");
+  cookieStore.delete({
+    name: "__Host-admin-session",
+    path: "/",
+    secure: true,
+  });
 }
 
 export async function getAdminSession() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token =
+    cookieStore.get(getCookieName())?.value ??
+    cookieStore.get(COOKIE_NAME)?.value ??
+    cookieStore.get("admin-session")?.value ??
+    cookieStore.get("__Host-admin-session")?.value;
   if (!token) return null;
 
   try {

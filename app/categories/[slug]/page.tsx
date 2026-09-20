@@ -39,8 +39,12 @@ interface CategoryPageProps {
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { q } = (await searchParams) || {};
   const category = await getCategoryBySlug(slug);
   if (!category) {
     return { title: "Category Not Found", robots: { index: false, follow: true } };
@@ -48,7 +52,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
   // Total category inventory (not filtered by search q)
   const dealCount = await countApprovedDealsInCategory(category.slug);
-  const indexable = dealCount >= MIN_CATEGORY_DEALS_FOR_INDEX;
+  const indexable = !q && dealCount >= MIN_CATEGORY_DEALS_FOR_INDEX;
 
   const isSecurity = category.slug === SECURITY_AND_PRIVACY_SLUG;
   const title = isSecurity

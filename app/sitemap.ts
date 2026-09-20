@@ -4,19 +4,35 @@ import { prisma } from "@/lib/prisma";
 import { getSiteUrl, SITE_STATIC_LAST_MODIFIED } from "@/lib/site";
 
 /**
- * Regenerated per request: `dynamic = "force-dynamic"` disables ISR, so the
- * `revalidate` below is inert and every request re-queries the DB. Caching
- * comes from the /sitemap.xml Cache-Control header in next.config.ts
- * (`public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400`),
- * which is what keeps crawler fetches reliable. Switching to real ISR
- * (dropping force-dynamic) is a deliberate, separate decision.
+ * 24h ISR: revalidate = 86400 with generateSitemaps() chunking (WP-DEALS-08).
+ * Note: dynamic = "force-dynamic" was replaced by real ISR and generateSitemaps().
  */
-export const revalidate = 3600;
-export const dynamic = "force-dynamic";
+export const revalidate = 86400;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+export const DEALS_PER_SITEMAP = 10_000;
+
+export async function generateSitemaps() {
+  const approvedNotExpired = {
+    status: "APPROVED" as const,
+    OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
+  };
+  try {
+    const count = await prisma.deal.count({ where: approvedNotExpired });
+    const totalChunks = Math.max(1, Math.ceil(count / DEALS_PER_SITEMAP));
+    return Array.from({ length: totalChunks }, (_, id) => ({ id: String(id) }));
+  } catch (err) {
+    console.error("[generateSitemaps] DB query failed, returning single sitemap", err);
+    return [{ id: "0" }];
+  }
+}
+
+export default async function sitemap(props?: {
+  id?: Promise<string | number> | string | number;
+}): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl();
   const currentTime = new Date();
+  const rawId = props?.id !== undefined ? await props.id : 0;
+  const chunkId = Number(rawId) || 0;
 
   // Static routes use a STABLE content date (SITE_STATIC_LAST_MODIFIED), never
   // the generation clock (F236): two fetches seconds apart must produce
@@ -85,8 +101,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       OR: [{ expiryDate: null }, { expiryDate: { gt: currentTime } }],
     };
 
-    const [categories, deals] = await Promise.all([
-      prisma.category.findMany({
+    // Category retention: retained in chunk 0 alongside static routes
+    let categoryRoutes: MetadataRoute.Sitemap = [];
+    if (chunkId === 0) {
+      const categories = await prisma.category.findMany({
         where: {
           isActive: true,
           deals: {
@@ -105,27 +123,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           },
         },
         orderBy: { sortOrder: "asc" },
-      }),
-      prisma.deal.findMany({
-        where: approvedNotExpired,
-        select: { slug: true, updatedAt: true, approvedAt: true },
-        orderBy: { updatedAt: "desc" },
-        // Cap for sitemap size safety
-        take: 45_000,
-      }),
-    ]);
+      });
 
-    // Thin categories omitted until they have enough deals
-    const categoryRoutes: MetadataRoute.Sitemap = categories
-      .filter((c) => c._count.deals >= MIN_CATEGORY_DEALS_FOR_INDEX)
-      .map((c) => ({
-        url: `${site}/categories/${c.slug}`,
-        // updatedAt is non-nullable in the schema — a clock fallback would
-        // reintroduce the deploy-time restamp (F236).
-        lastModified: c.updatedAt,
-        changeFrequency: "daily" as const,
-        priority: 0.85,
-      }));
+      // Thin categories omitted until they have enough deals
+      categoryRoutes = categories
+        .filter((c) => c._count.deals >= MIN_CATEGORY_DEALS_FOR_INDEX)
+        .map((c) => ({
+          url: `${site}/categories/${c.slug}`,
+          // updatedAt is non-nullable in the schema — a clock fallback would
+          // reintroduce the deploy-time restamp (F236).
+          lastModified: c.updatedAt,
+          changeFrequency: "daily" as const,
+          priority: 0.85,
+        }));
+    }
+
+    const deals = await prisma.deal.findMany({
+      where: approvedNotExpired,
+      select: { slug: true, updatedAt: true, approvedAt: true },
+      orderBy: { updatedAt: "desc" },
+      skip: chunkId * DEALS_PER_SITEMAP,
+      take: DEALS_PER_SITEMAP,
+    });
 
     const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
       url: `${site}/deals/${d.slug}`,
@@ -135,7 +154,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     }));
 
-    return [...staticRoutes, ...categoryRoutes, ...dealRoutes];
+    if (chunkId === 0) {
+      return [...staticRoutes, ...categoryRoutes, ...dealRoutes];
+    }
+    // F-DISC-W6-02: If a chunk yields no deals, fall back to staticRoutes
+    // to avoid emitting an empty <urlset> that triggers GSC schema warnings.
+    if (dealRoutes.length === 0) {
+      return staticRoutes;
+    }
+    return dealRoutes;
   } catch (err) {
     console.error("[sitemap] DB query failed, returning static routes only", err);
     return staticRoutes;

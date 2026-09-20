@@ -65,41 +65,40 @@ function dealsPath({
 }
 
 /**
- * Canonical /deals URL: active filters preserved, cursor never included, so
- * every page — page 1, minted cursor pages, garbage cursor URLs — resolves to
- * the same bare filtered URL. Deeper pages stay crawlable through the
- * rel=next links instead of self-canonicalizing.
+ * Canonical /deals URL: active filters canonicalize back to their base
+ * category / index URL. If filtered by category, canonical is /categories/[slug].
+ * Otherwise (bare /deals, search, featured, cursor), canonical is /deals.
  */
 function canonicalDealsPath({
-  search,
   categorySlug,
-  featuredOnly,
 }: {
-  search: string;
-  categorySlug: string;
-  featuredOnly: boolean;
+  categorySlug?: string;
 }): string {
-  return dealsPath({ search, categorySlug, featuredOnly });
+  if (categorySlug) {
+    return `/categories/${categorySlug}`;
+  }
+  return "/deals";
 }
 
 export async function generateMetadata({
   searchParams,
 }: DealsPageProps): Promise<Metadata> {
   const params = await searchParams;
-  // Bare /deals + active filters (q/category/featured), NEVER the cursor:
-  // minted and garbage cursor URLs all consolidate to the canonical, so they
-  // cannot become separately indexable duplicate pages.
   const canonical = canonicalDealsPath({
-    search: params.q || "",
     categorySlug: params.category || "",
-    featuredOnly: params.featured === "1",
   });
+  const hasFilterOrSearch = Boolean(
+    params.q || params.category || params.featured || params.cursor
+  );
 
   return {
     title: "Browse Verified Software Deals",
     description:
       "Filter current software and SaaS deals. Validity can change; each page states how to claim.",
     alternates: { canonical },
+    robots: hasFilterOrSearch
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
     openGraph: {
       title: "Browse Verified Software Deals",
       description:
@@ -123,8 +122,8 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
   const categorySlug = params.category || "";
   const featuredOnly = params.featured === "1";
   const cursorParam = params.cursor || "";
-  // Same canonical the metadata uses: bare /deals + filters, no cursor.
-  const canonicalPath = canonicalDealsPath({ search, categorySlug, featuredOnly });
+  // Same canonical the metadata uses: base category URL or /deals.
+  const canonicalPath = canonicalDealsPath({ categorySlug });
 
   const [totalDealCount, categories] = await Promise.all([
     countApprovedDeals(),
