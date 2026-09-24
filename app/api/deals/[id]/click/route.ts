@@ -12,7 +12,12 @@ export async function POST(
   // CSRF guard (F-DEAL-016): the endpoint mutates persistent state (click
   // counter), so browser POSTs must come from the site itself. Origin-less
   // clients (curl, monitors) pass — they cannot be tricked cross-site.
-  if (!isOriginAllowed(request.headers.get("origin"))) {
+  if (
+    !isOriginAllowed(
+      request.headers.get("origin"),
+      request.headers.get("sec-fetch-site")
+    )
+  ) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
