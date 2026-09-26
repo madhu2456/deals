@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { redisRateLimit } from "@/lib/rate-limit";
 export { isOriginAllowed as isReportOriginAllowed } from "@/lib/origin";
 
 /**
@@ -33,8 +33,10 @@ export const REPORT_ID_MAX_LEN = 64;
  */
 
 export type BrokenReportResult =
+  // 503 (not 429) when the F029 fail-closed trip fires: a Redis outage must be
+  // operator-visible as an outage, never reported as visitor throttling.
   | { success: true }
-  | { success: false; status: 400 | 404 | 429 | 500; error: string };
+  | { success: false; status: 400 | 404 | 429 | 500 | 503; error: string };
 
 /** Honeypot: a filled hidden field marks a bot (route returns success silently). */
 export function reportHoneypotTriggered(form: FormData): boolean {
@@ -55,18 +57,26 @@ export async function recordBrokenDealReport(
     return { success: false, status: 400, error: "Invalid deal id" };
   }
 
+  // F029: report is an abuse surface — fail CLOSED when Redis is configured
+  // but down instead of trusting a per-instance bucket that can be outrun.
+  const reportLimit = await redisRateLimit({
+    key: `report:${ip}`,
+    limit: REPORT_MAX_PER_IP,
+    windowMs: REPORT_WINDOW_MS,
+    failMode: "closed",
+  });
+
   if (
     process.env.NODE_ENV === "production" &&
-    (await checkRateLimit({
-      key: `report:${ip}`,
-      limit: REPORT_MAX_PER_IP,
-      windowMs: REPORT_WINDOW_MS,
-    }))
+    reportLimit.limited
   ) {
     return {
       success: false,
-      status: 429,
-      error: "Too many reports from your IP. Please try again later.",
+      // 503 = "our limiter is degraded" (Redis down); 429 = "you sent too many".
+      status: reportLimit.failClosed ? 503 : 429,
+      error: reportLimit.failClosed
+        ? "Reporting is temporarily unavailable. Please try again shortly."
+        : "Too many reports from your IP. Please try again later.",
     };
   }
 

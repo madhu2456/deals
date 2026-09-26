@@ -8,8 +8,9 @@ function sweepExpired(now: number): void {
 
 /**
  * Simple in-memory rate limiter. Synchronous entry point — this is the
- * production path when Upstash Redis is not configured, and the fail-open
- * fallback when it is configured but unreachable.
+ * production path when Upstash Redis is not configured, and the per-instance
+ * fallback for `failMode: "open"` surfaces when it is configured but
+ * unreachable (abuse surfaces use `failMode: "closed"` — see `redisRateLimit`).
  *
  * NOTE: this function is intentionally synchronous (consumers call it without
  * `await`), so it can never perform a remote Redis round-trip itself. For
@@ -57,6 +58,13 @@ export type RateLimitOutcome = {
   /** Epoch ms when the current window ends (informational) */
   resetAt: number;
   backend: RateLimitBackend;
+  /**
+   * F029: `true` when the block was caused by configured-but-unreachable
+   * Redis on a `failMode: "closed"` surface (NOT by the visitor's own
+   * attempt count) — callers use it to answer 503 instead of 429 so an
+   * operator-visible outage is never misreported as user throttling.
+   */
+  failClosed?: boolean;
 };
 
 const hasUpstashConfig = () => {
@@ -78,24 +86,87 @@ export function getRedisFallbackCount(): number {
   return redisFallbackCount;
 }
 
-function recordRedisFallback(): void {
+/**
+ * What the limiter does when Redis is CONFIGURED but unreachable (F029).
+ *  - `open` — degrade to the per-instance memory bucket (interactive
+ *    surfaces; a Redis outage must never lock out every visitor).
+ *  - `closed` — block the request instead of trusting a bucket an attacker
+ *    can route around by spreading attempts across instances (auth, report,
+ *    click abuse surfaces).
+ * The unconfigured (no-env) path is always the memory limiter — there is no
+ * shared state to lose, so neither policy applies.
+ */
+export type RateLimitFailMode = "open" | "closed";
+
+export type RedisFallbackAlert = {
+  /** `rl_redis_fallback` total at alert time. */
+  count: number;
+  /** Policy in effect on the surface that tripped the fallback. */
+  failMode: RateLimitFailMode;
+  /** Error message only — never a URL, token, or key. */
+  cause: string;
+};
+
+type RedisFallbackHandler = (alert: RedisFallbackAlert) => void;
+
+/**
+ * Alert sink for Redis fail-over events (F029). `failMode: "closed"` means an
+ * abuse surface just lost its control — ops should page on it. Omit the
+ * handler and the built-in structured log line is used; pass `null` to detach.
+ */
+export function onRedisFallbackAlert(handler: RedisFallbackHandler | null): void {
+  redisFallbackHandler = handler;
+}
+
+let redisFallbackHandler: RedisFallbackHandler | null = null;
+
+/** One alert per mode per minute — an outage must not flood the log. */
+const ALERT_THROTTLE_MS = 60_000;
+const lastAlertAt = new Map<RateLimitFailMode, number>();
+
+function defaultRedisFallbackAlert({ count, failMode, cause }: RedisFallbackAlert): void {
+  console.error(
+    `ALERT rl_redis_fallback count=${count} fail_mode=${failMode} rate-limit: Upstash Redis unreachable — ${
+      failMode === "closed"
+        ? "fail-CLOSED: blocking the request (abuse surface degraded)"
+        : "fail-open: per-instance memory limiting only"
+    } (${cause})`
+  );
+}
+
+function recordRedisFallback(failMode: RateLimitFailMode, cause: string): void {
   redisFallbackCount += 1;
+  const now = Date.now();
+  const last = lastAlertAt.get(failMode) ?? 0;
+  if (now - last < ALERT_THROTTLE_MS) return;
+  lastAlertAt.set(failMode, now);
+  (redisFallbackHandler ?? defaultRedisFallbackAlert)({ count: redisFallbackCount, failMode, cause });
 }
 
 /**
  * Rate limiter backed by Upstash Redis REST (shared across instances) when
- * UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set; otherwise (or on
- * any Redis error) falls back to the same in-memory limiter as `isRateLimited`.
+ * UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set; otherwise falls
+ * back to the same in-memory limiter as `isRateLimited`.
  *
- * Failure semantics: fail OPEN. A Redis outage must never lock out all
- * submitters — it degrades to per-instance limiting. Transient failures
- * (network errors, 5xx) log a warning once; 4xx responses mean a
- * misconfigured URL/token and log a warning on every call. Every Redis
- * fail-open increments `rl_redis_fallback` (`getRedisFallbackCount`).
+ * Failure semantics (F029): a Redis OUTAGE is a degraded abuse control, and
+ * the policy is per surface, not global:
+ *  - `failMode: "open"` (default) — the documented submit path. A Redis
+ *    outage must never lock out submitters, so it degrades to per-instance
+ *    limiting. Transient failures (network errors, 5xx) log a warning once;
+ *    4xx responses mean a misconfigured URL/token and log a warning on every
+ *    call.
+ *  - `failMode: "closed"` — auth / report / click abuse surfaces. The
+ *    per-instance memory bucket is NOT a shared control: an attacker
+ *    spreads attempts across instances and simply outruns it, so the safe
+ *    answer is to block (the caller answers 503) until Redis returns.
+ * Every Redis fail-over — open or closed — increments `rl_redis_fallback`
+ * (`getRedisFallbackCount`) and raises an alert (`onRedisFallbackAlert`),
+ * throttled to one per mode per minute.
  *
  * Same semantics as `isRateLimited`: fixed window anchored at the first hit,
  * `true` when the count would exceed `limit` within `windowMs`.
  *
+ * @param failMode - Redis-outage policy for this surface (default `"open"`)
  * @param key - Unique identifier (e.g. `login:${ip}` or `click:${ip}`)
  * @param limit - Maximum allowed attempts within the window
  * @param windowMs - Time window in milliseconds
@@ -104,10 +175,12 @@ export async function redisRateLimit({
   key,
   limit,
   windowMs,
+  failMode = "open",
 }: {
   key: string;
   limit: number;
   windowMs: number;
+  failMode?: RateLimitFailMode;
 }): Promise<RateLimitOutcome> {
   if (!hasUpstashConfig()) {
     return rateLimitInMemory(key, limit, windowMs, "memory");
@@ -119,17 +192,35 @@ export async function redisRateLimit({
     // 4xx from Upstash is a config error (bad URL/token) — warn on EVERY call
     // so the misconfiguration stays loud; still fail open. Network errors and
     // 5xx are transient — warn once, not per request.
-    recordRedisFallback();
+    recordRedisFallback(
+      failMode,
+      err instanceof UpstashHttpError
+        ? `Upstash HTTP ${err.status} (configuration error)`
+        : err instanceof Error
+          ? err.message
+          : String(err)
+    );
     if (err instanceof UpstashHttpError && err.status >= 400 && err.status < 500) {
       console.warn(
-        `rl_redis_fallback count=${redisFallbackCount} rate-limit: Upstash rate-limit misconfiguration (HTTP ${err.status}) — check UPSTASH_REDIS_REST_URL/TOKEN — falling back to in-memory`
+        `rl_redis_fallback count=${redisFallbackCount} fail_mode=${failMode} rate-limit: Upstash rate-limit misconfiguration (HTTP ${err.status}) — check UPSTASH_REDIS_REST_URL/TOKEN — ${
+          failMode === "closed" ? "failing CLOSED (blocking)" : "falling back to in-memory"
+        }`
       );
     } else if (!warnedOnce) {
       warnedOnce = true;
       console.warn(
-        `rl_redis_fallback count=${redisFallbackCount} rate-limit: Upstash Redis unreachable — failing open to in-memory limiting`,
+        `rl_redis_fallback count=${redisFallbackCount} fail_mode=${failMode} rate-limit: Upstash Redis unreachable — ${
+          failMode === "closed" ? "failing CLOSED (blocking the request)" : "failing open to in-memory limiting"
+        }`,
         err instanceof Error ? err.message : String(err)
       );
+    }
+
+    // F029 fail-closed: an abuse surface must not silently drop to a
+    // per-instance bucket the attacker can outrun, so block the request.
+    // No memory bucket is recorded — the visitor did not exceed anything.
+    if (failMode === "closed") {
+      return { limited: true, resetAt: Date.now() + windowMs, backend: "memory", failClosed: true };
     }
     return rateLimitInMemory(key, limit, windowMs, "memory");
   }
@@ -138,7 +229,9 @@ export async function redisRateLimit({
 /**
  * Async rate-limit check for consumers in async contexts (server actions,
  * route handlers). Uses the shared Upstash bucket when configured, otherwise
- * the exact in-memory path — behavior is identical either way.
+ * the exact in-memory path — behavior is identical either way. Choose
+ * `failMode` per surface (see `redisRateLimit`); use `redisRateLimit`
+ * directly when the caller needs to tell an outage apart from throttling.
  *
  * @param key - Unique identifier (e.g. `login:${ip}` or `click:${ip}`)
  * @param limit - Maximum allowed attempts within the window
@@ -149,12 +242,14 @@ export async function checkRateLimit({
   key,
   limit,
   windowMs,
+  failMode = "open",
 }: {
   key: string;
   limit: number;
   windowMs: number;
+  failMode?: RateLimitFailMode;
 }): Promise<boolean> {
-  const outcome = await redisRateLimit({ key, limit, windowMs });
+  const outcome = await redisRateLimit({ key, limit, windowMs, failMode });
   return outcome.limited;
 }
 
