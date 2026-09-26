@@ -168,6 +168,17 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // F001: /sitemap.xml must serve the sitemap INDEX (the list of
+      // /sitemap/<id>.xml chunks that generateSitemaps() produces).
+      // app/sitemap.ts reserves the /sitemap.xml path for its metadata route —
+      // Next 16 does not emit an index for a root sitemap.ts, and a route
+      // handler at that path is rejected with "Conflicting route and
+      // metadata at /sitemap.xml". The rewrite keeps the public URL
+      // advertised by robots.ts / ai-profile.json / llms.txt working.
+      {
+        source: "/sitemap.xml",
+        destination: "/sitemap-index.xml",
+      },
       {
         source: "/:key([a-zA-Z0-9-]{8,128})\\.txt",
         destination: "/api/indexnow?key=:key",
