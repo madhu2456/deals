@@ -76,6 +76,16 @@ jobs:
       - name: Gate 3 - Rate-limit + IP trust + URL normalization regression
         run: pnpm test:rate-limit
 
+      # DB-free (lib/rate-limit only, synthetic Upstash stubs): proves the
+      # F029 failMode semantics — fail-open surfaces degrade to the per-instance
+      # bucket; fail-closed surfaces (login/report/click) block with no memory
+      # bucket, and the three handlers answer 503 (never 429) for the outage.
+      - name: Gate 3b - Upstash limiter fail-open/fail-CLOSED + handler mapping
+        run: pnpm test:redis-limiter
+
+      - name: Gate 3c - F029 fail-closed handler coverage (login/report/click 503)
+        run: pnpm test:fail-closed
+
       # DB-free: scripts/check-offer-validity.ts imports Prisma lazily inside
       # main(); the test imports only the pure checker functions with a mocked
       # fetch (no network) plus source-copy assertions for F-DEAL-001.

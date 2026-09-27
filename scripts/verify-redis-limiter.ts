@@ -11,8 +11,20 @@
  *  - shared bucket (mocked Upstash SET NX PX / INCR / TTL) → counts shared
  *    across checkRateLimit calls, `deals:` namespace prefix present
  *  - garbage INCR counts → no throw, no silent bypass (memory fallback)
+ *  - F029 fail-CLOSED: Redis unreachable + `failMode: "closed"` (the
+ *    login/report/click abuse surfaces) blocks with `failClosed: true` and
+ *    records NO memory bucket, for network errors AND 4xx misconfiguration
+ *  - F029 fail-OPEN stays fail-open: the submit surface (explicit
+ *    `failMode: "open"` + the `checkRateLimit` default) still degrades to the
+ *    per-instance bucket — a Redis outage must never lock out submitters.
  */
-import { checkRateLimit, getRedisFallbackCount } from "../lib/rate-limit";
+import {
+  checkRateLimit,
+  getRateLimiterSize,
+  getRedisFallbackCount,
+  onRedisFallbackAlert,
+  redisRateLimit,
+} from "../lib/rate-limit";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`FAIL: ${msg}`);
@@ -253,10 +265,129 @@ async function main() {
     unstubFetch();
   }
 
+  // ── (6) F029 fail-CLOSED: Redis unreachable → block, NO memory bucket ──
+  // The login/report/click abuse surfaces must NOT silently drop to a
+  // per-instance bucket an attacker can outrun by spreading attempts across
+  // instances, so the safe answer is "block" (`failClosed: true`). Just as
+  // important: no memory bucket is recorded — the visitor did not exceed
+  // anything, and recording one would make an outage look like visitor
+  // throttling in the ops view.
+  try {
+    setEnv("https://upstash.example.com", "tok");
+    stubFetch(() => Promise.reject(new TypeError("fetch failed")));
+    warnCount = 0;
+    const closedAlerts: Array<{ count: number; failMode: string }> = [];
+    onRedisFallbackAlert((a) => closedAlerts.push(a));
+    const sizeBefore = getRateLimiterSize();
+    const fallbackBefore = getRedisFallbackCount();
+
+    const outcome = await redisRateLimit({
+      key: "verify:fail-closed",
+      limit: 5,
+      windowMs: 60_000,
+      failMode: "closed",
+    });
+    assert(outcome.limited === true, "fail-closed blocks when Redis rejects the call");
+    assert(
+      outcome.failClosed === true,
+      "fail-closed marks the block as an outage, never as visitor throttling"
+    );
+    assert(outcome.resetAt > Date.now(), "fail-closed still reports a window end");
+    assert(
+      getRateLimiterSize() === sizeBefore,
+      "fail-closed records NO memory bucket (no per-instance accounting)"
+    );
+    assert(
+      getRedisFallbackCount() === fallbackBefore + 1,
+      "rl_redis_fallback increments on a fail-closed trip"
+    );
+    assert(closedAlerts.length === 1, "one fallback alert raised for the fail-closed trip");
+    assert(closedAlerts[0]?.failMode === "closed", "alert carries fail_mode=closed");
+
+    // Repeat: still closed, still no bucket, alert still throttled (no flood).
+    const second = await redisRateLimit({
+      key: "verify:fail-closed-2",
+      limit: 5,
+      windowMs: 60_000,
+      failMode: "closed",
+    });
+    assert(second.limited === true, "fail-closed blocks on a repeated call too");
+    assert(second.failClosed === true, "repeat fail-closed still reports the outage marker");
+    assert(getRateLimiterSize() === sizeBefore, "repeat fail-closed still records no bucket");
+    assert(closedAlerts.length === 1, "fallback alert throttled to one per mode per minute");
+    assert(
+      getRedisFallbackCount() === fallbackBefore + 2,
+      "rl_redis_fallback counts EVERY fail-closed trip"
+    );
+  } finally {
+    onRedisFallbackAlert(null);
+    restoreEnv();
+    unstubFetch();
+  }
+
+  // ── (7) F029 fail-CLOSED on a 4xx misconfiguration (bad token) ──
+  // A misconfigured URL/token is not a visitor problem, but it is still a
+  // lost abuse control — it must fail closed on these surfaces.
+  try {
+    setEnv("https://upstash.example.com", "tok");
+    stubFetch(async () => new Response("Unauthorized", { status: 401 }));
+    const sizeBefore = getRateLimiterSize();
+    const mis = await redisRateLimit({
+      key: "verify:fail-closed-4xx",
+      limit: 5,
+      windowMs: 60_000,
+      failMode: "closed",
+    });
+    assert(mis.limited === true, "4xx misconfiguration fails CLOSED on an abuse surface");
+    assert(mis.failClosed === true, "4xx fail-closed carries the outage marker");
+    assert(getRateLimiterSize() === sizeBefore, "4xx fail-closed records no memory bucket");
+  } finally {
+    restoreEnv();
+    unstubFetch();
+  }
+
+  // ── (8) the submit surface must STAY fail-open (anti-weakening guard) ──
+  try {
+    setEnv("https://upstash.example.com", "tok");
+    stubFetch(() => Promise.reject(new TypeError("fetch failed")));
+    const sizeBefore = getRateLimiterSize();
+
+    const openOutcome = await redisRateLimit({
+      key: "verify:fail-open-explicit",
+      limit: 5,
+      windowMs: 60_000,
+      failMode: "open",
+    });
+    assert(openOutcome.limited === false, "explicit fail-open still allows the request");
+    assert(
+      openOutcome.failClosed === undefined,
+      "fail-open blocks never carry the failClosed marker"
+    );
+    assert(
+      getRateLimiterSize() === sizeBefore + 1,
+      "fail-open degrades to the per-instance memory bucket"
+    );
+
+    // `checkRateLimit` defaults to failMode "open" — the documented submit path.
+    const submit = await checkRateLimit({
+      key: "verify:submit-default-open",
+      limit: 5,
+      windowMs: 60_000,
+    });
+    assert(submit === false, "checkRateLimit (submit path) stays fail-open");
+    assert(
+      getRateLimiterSize() === sizeBefore + 2,
+      "submit path records its own memory bucket (fail-open, not fail-closed)"
+    );
+  } finally {
+    restoreEnv();
+    unstubFetch();
+  }
+
   restoreEnv();
   console.warn = realWarn;
   console.log(
-    "OK: redis limiter verified (no-env memory path, 4xx-every-call + network-once warns, fail-open, shared bucket, parse safety)"
+    "OK: redis limiter verified (no-env memory path, 4xx-every-call + network-once warns, fail-open + fail-CLOSED (no bucket), shared bucket, parse safety)"
   );
 }
 
