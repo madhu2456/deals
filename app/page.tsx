@@ -41,7 +41,12 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
+  // F065: a page-level `openGraph` object REPLACES the root layout's (Next
+  // does not deep-merge it), so `siteName` — declared in app/layout.tsx —
+  // never reached this document and the home carried no og:site_name at all.
+  // Restate it here rather than dropping the rest of the home card.
   openGraph: {
+    siteName: SITE_NAME,
     title: HOME_TITLE,
     description: SITE_DESCRIPTION,
     url: absoluteUrl("/"),
