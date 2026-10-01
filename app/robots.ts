@@ -5,7 +5,7 @@ import { getSiteUrl } from "@/lib/site";
  * Crawl policy for Google, Bing, and major AI answer engines (AEO / GEO).
  * Admin + API are blocked; public content is open to search & citation bots.
  * Training-only crawlers (GPTBot, ClaudeBot, anthropic-ai, CCBot,
- * Applebot-Extended, Bytespider) are blocked.
+ * Applebot-Extended, Meta-ExternalAgent, Bytespider) are blocked.
  * Claude-SearchBot / Claude-User / Claude-Web are allowed (citation); ClaudeBot training stays blocked.
  *
  * Decision D5 (recorded, owner): blocking training crawlers is INTENTIONAL and
@@ -112,6 +112,13 @@ export default function robots(): MetadataRoute.Robots {
       // training-block policy as portfolio/blog/enroller (F-XSITE-010).
       {
         userAgent: "Applebot-Extended",
+        disallow: ["/"],
+      },
+      // Meta's ExternalAgent fetcher (Meta AI / Llama training crawl). Named
+      // explicitly so the directive cannot be inherited from a group whose
+      // policy later flips — matches portfolio/blog/televault F061.
+      {
+        userAgent: "Meta-ExternalAgent",
         disallow: ["/"],
       },
       {
