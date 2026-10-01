@@ -2,6 +2,7 @@ import {
   absoluteUrl,
   defaultOgImage,
   getSiteUrl,
+  PERSON_SAME_AS,
   PUBLISHER,
   SITE_DESCRIPTION,
   SITE_NAME,
@@ -23,6 +24,32 @@ export function JsonLd({ data }: { data: JsonValue }) {
   );
 }
 
+/**
+ * Canonical Person node (F063 / Fix #8).
+ *
+ * One definition serves every emission point on this site: the root layout
+ * serializes it as `Organization.founder` and twice as the `WebApplication`
+ * author + creator, and /ai-profile.json repeats it. All four previously
+ * shipped as separate, sameAs-less copies of the same person — a knowledge
+ * graph merges nodes by @id, so they resolved to one entity that carried no
+ * identity anchors at all. Sharing one factory gives every copy the same
+ * @id (`https://madhudadi.in/#person`) and the same 8-anchor sameAs list,
+ * so the duplicated copies are now a single, fully-stamped identity.
+ *
+ * sameAs holds authority profiles only (Fix #8): never this site or any
+ * sibling property — those link through publisher / author / creator.
+ */
+export function personSchema() {
+  return {
+    "@type": "Person",
+    // Stable hub fragment for entity identity; public profile is the deep link.
+    "@id": `${PUBLISHER.url}/#person`,
+    name: PUBLISHER.name,
+    url: PUBLISHER.profile,
+    sameAs: PERSON_SAME_AS,
+  };
+}
+
 export function organizationSchema() {
   return {
     "@context": "https://schema.org",
@@ -38,13 +65,7 @@ export function organizationSchema() {
     },
     image: absoluteUrl("/icon-512.png"),
     description: SITE_DESCRIPTION,
-    founder: {
-      "@type": "Person",
-      // Stable hub fragment for entity identity; public profile is the deep link.
-      "@id": `${PUBLISHER.url}/#person`,
-      name: PUBLISHER.name,
-      url: PUBLISHER.profile,
-    },
+    founder: personSchema(),
     parentOrganization: { "@id": `${PUBLISHER.url}/#organization` },
   };
 }
@@ -82,18 +103,8 @@ export function webApplicationSchema() {
     operatingSystem: "All",
     browserRequirements: "Requires JavaScript. Requires HTML5.",
     description: SITE_DESCRIPTION,
-    author: {
-      "@type": "Person",
-      "@id": `${PUBLISHER.url}/#person`,
-      name: PUBLISHER.name,
-      url: PUBLISHER.profile,
-    },
-    creator: {
-      "@type": "Person",
-      "@id": `${PUBLISHER.url}/#person`,
-      name: PUBLISHER.name,
-      url: PUBLISHER.profile,
-    },
+    author: personSchema(),
+    creator: personSchema(),
     publisher: { "@id": `${getSiteUrl()}/#organization` },
     inLanguage: "en-IN",
     offers: {
