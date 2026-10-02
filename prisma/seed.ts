@@ -157,6 +157,26 @@ const CURATED_DEALS: CuratedDeal[] = [
     notes:
       "India only. Internshala: https://internshala.com/google-ai-plus-free — cancel before auto-renew.",
   },
+  {
+    slug: "gwarden-ai-telegram-web-bot",
+    title: "Gwarden AI — AI model API access & Telegram bot",
+    brandName: "Gwarden AI",
+    brandUrl: "https://gwarden.su/cabinet?ref=YIHKN0K1M7",
+    dealUrl: "https://t.me/GwardenAIBot?start=ref_YIHKN0K1M7",
+    discountType: "FREE_TIER",
+    discountValue: "Free Credits",
+    originalPrice: "Pay-as-you-go",
+    discountedPrice: "Free",
+    logoUrl: null,
+    shortDescription:
+      "Access top AI models via Telegram bot or web cabinet with starter credits.",
+    description:
+      "Gwarden AI provides access to leading AI models for chat, coding, and image generation through both a Telegram bot and a browser cabinet. Use the claim link to start directly in the Telegram bot with initial bonus credits. Alternatively, access your account, manage API tokens, and top up balance via the web cabinet link under Official Website. Model availability, usage rates, and credit allotments are managed directly by Gwarden AI.",
+    categorySlug: "ai-and-machine-learning",
+    isFeatured: true,
+    notes:
+      "Telegram bot: https://t.me/GwardenAIBot?start=ref_YIHKN0K1M7 | Web cabinet: https://gwarden.su/cabinet?ref=YIHKN0K1M7",
+  },
 ];
 
 async function main() {
