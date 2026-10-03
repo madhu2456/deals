@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
+import { anonymizeSubmitterByEmail, isValidDsrEmail } from "@/lib/dsr-erasure";
 import { isAdmin2faEnabled } from "@/lib/admin-2fa";
 import { checkRateLimit, redisRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
@@ -553,6 +554,33 @@ export async function adminDeleteDealAction(id: string) {
   revalidatePath("/sitemap.xml");
 
   return { success: true as const };
+}
+
+export async function adminAnonymizeSubmitterAction(submittedByEmail: string) {
+  await requireAdmin();
+
+  if (!isValidDsrEmail(submittedByEmail)) {
+    return { success: false as const, error: "A valid email is required" };
+  }
+
+  const result = await anonymizeSubmitterByEmail(submittedByEmail);
+  console.info("[dsr] submitter anonymized", {
+    count: result.count,
+    redactedEmail: result.email,
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/deals");
+  revalidatePath("/");
+  revalidatePath("/sitemap.xml");
+  return { success: true as const, count: result.count };
+}
+
+export async function adminAnonymizeSubmitterFormAction(formData: FormData) {
+  const rawEmail = formData.get("submittedByEmail");
+  const email = typeof rawEmail === "string" ? rawEmail : "";
+  await adminAnonymizeSubmitterAction(email);
+  redirect("/admin");
 }
 
 async function parseDealFormData(

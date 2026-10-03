@@ -76,3 +76,14 @@ model Admin2FA {
 
   @@map("admin_2fa")
 }
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  action    String
+  subject   String
+  metadata  String
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@map("audit_events")
+}

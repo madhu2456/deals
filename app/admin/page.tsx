@@ -13,7 +13,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/admin-auth";
-import { logoutAdminAction } from "@/lib/actions";
+import {
+  adminAnonymizeSubmitterFormAction,
+  logoutAdminAction,
+} from "@/lib/actions";
 import { getAllDealsAdmin } from "@/lib/data";
 import { formatDate, statusColor } from "@/lib/format";
 import { AdminActions } from "./AdminActions";
@@ -82,6 +85,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               </Link>
             ))}
           </nav>
+
+          <form action={adminAnonymizeSubmitterFormAction} className="flex max-w-sm gap-2">
+            <Input
+              name="submittedByEmail"
+              type="email"
+              required
+              placeholder="Email to erase"
+              aria-label="Submitter email to erase"
+            />
+            <Button type="submit" variant="secondary">
+              Erase submitter
+            </Button>
+          </form>
 
           <form action="/admin" className="flex max-w-sm gap-2">
             <div className="relative flex-1">
