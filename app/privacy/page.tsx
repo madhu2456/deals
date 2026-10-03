@@ -148,8 +148,26 @@ export default function PrivacyPage() {
             <h2>6. Data retention</h2>
             <p>
               Deal submissions and associated metadata are retained as long as the
-              deal remains published. You can request deletion of your submission data
-              by contacting us.
+              deal remains published. To request an export or erasure, use our{" "}
+              <a
+                href="/contact"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                contact form
+              </a>{" "}
+              or email{" "}
+              <a
+                href="mailto:hello@madhudadi.in"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                hello@madhudadi.in
+              </a>{" "}
+              with the address used for the deal submission and enough context to
+              identify the request. The operator verifies control of the address
+              before acting, then acknowledges and completes erasure within{" "}
+              <strong>30 days</strong>, or sooner where practical. The request
+              covers matching deal submissions; backups and caches are handled
+              according to their retention and invalidation procedures.
             </p>
 
             <h2>7. India DPDP notice (Data Fiduciary)</h2>
