@@ -16,6 +16,7 @@ import { getSiteUrl } from "@/lib/site";
  * what earns citations.
  */
 const CRAWLER_DISALLOW = ["/admin", "/admin/", "/api/", "/api", "/ws/"];
+const TRAINING_CRAWLER_DISALLOW = ["/", ...CRAWLER_DISALLOW];
 
 export default function robots(): MetadataRoute.Robots {
   const site = getSiteUrl();
@@ -92,19 +93,19 @@ export default function robots(): MetadataRoute.Robots {
       // Training-only crawlers — blocked
       {
         userAgent: "GPTBot",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       {
         userAgent: "ClaudeBot",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       {
         userAgent: "anthropic-ai",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       {
         userAgent: "CCBot",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       // Applebot-Extended (Apple's training crawler) and Bytespider
       // (ByteDance training crawler) are distinct from their search crawlers
@@ -112,18 +113,18 @@ export default function robots(): MetadataRoute.Robots {
       // training-block policy as portfolio/blog/enroller (F-XSITE-010).
       {
         userAgent: "Applebot-Extended",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       // Meta's ExternalAgent fetcher (Meta AI / Llama training crawl). Named
       // explicitly so the directive cannot be inherited from a group whose
       // policy later flips — matches portfolio/blog/televault F061.
       {
         userAgent: "Meta-ExternalAgent",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
       {
         userAgent: "Bytespider",
-        disallow: ["/"],
+        disallow: TRAINING_CRAWLER_DISALLOW,
       },
     ],
     sitemap: `${site}/sitemap.xml`,

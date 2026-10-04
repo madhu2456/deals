@@ -221,6 +221,50 @@ html.dark {
     0 8px 24px rgb(0 0 0 / 0.25);
 }
 
+@media (forced-colors: active) {
+  body { background: Canvas; color: CanvasText; }
+  a { color: LinkText; }
+  button,
+  [role="button"] {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+  input,
+  textarea,
+  select {
+    border-color: ButtonText;
+    background: Field;
+    color: FieldText;
+  }
+  .surface-elevated { box-shadow: none; }
+  :focus-visible { outline: 3px solid Highlight; outline-offset: 3px; }
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: #334155;
+    --border: #818cf8;
+    --input: #6366f1;
+  }
+  .dark {
+    --muted-foreground: #c7d2fe;
+    --border: #818cf8;
+    --input: #a5b4fc;
+  }
+  :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
