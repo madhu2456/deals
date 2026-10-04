@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Search, Menu, X, Plus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ImeSafeInput } from "./ImeSafeInput";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { BrandLogo } from "./BrandLogo";
 import { SITE_NAME, SITE_NAME_SHORT } from "@/lib/site";
@@ -71,7 +71,7 @@ export function Header() {
               <label htmlFor="header-search" className="sr-only">
                 Search deals
               </label>
-              <Input
+              <ImeSafeInput
                 id="header-search"
                 name="q"
                 value={query}
@@ -147,7 +147,7 @@ export function Header() {
                     className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                     aria-hidden="true"
                   />
-                  <Input
+                  <ImeSafeInput
                     id="mobile-search"
                     name="q"
                     placeholder="Search deals…"
