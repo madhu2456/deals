@@ -81,7 +81,6 @@ export function LogoImage({
   if (!src) return null;
   if (!isAllowedLogoUrl(src) || isSvgLogo(src)) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- intentional: optimizer 400s on SVG/out-of-pattern URLs
       <img
         src={src}
         alt={alt}

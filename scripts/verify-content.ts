@@ -107,7 +107,7 @@ const workspaceYaml = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8"
 const packageJson = readFileSync(join(repoRoot, "package.json"), "utf8");
 assert(/"postcss": "8\.5\.26"/.test(packageJson), "package.json pins postcss exactly");
 assert(/"sharp": "0\.35\.5"/.test(packageJson), "package.json pins sharp exactly");
-assert(/^  postcss: 8\.5\.26$/m.test(workspaceYaml), "workspace.yaml pins postcss exactly");
-assert(/^  sharp: 0\.35\.5$/m.test(workspaceYaml), "workspace.yaml pins sharp exactly");
+assert(/^ {2}postcss: 8\.5\.26$/m.test(workspaceYaml), "workspace.yaml pins postcss exactly");
+assert(/^ {2}sharp: 0\.35\.5$/m.test(workspaceYaml), "workspace.yaml pins sharp exactly");
 
 console.log("OK: content modules verified (category-intro + site config + F301 pins)");
