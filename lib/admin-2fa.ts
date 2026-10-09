@@ -30,6 +30,45 @@ export function isAdmin2faEnabled(): boolean {
   return process.env.ADMIN_2FA_ENABLED === "true";
 }
 
+/**
+ * F030: what the admin login may do in THIS process.
+ *
+ * 2FA stays opt-in by flag, but the flag must now be EXPLICIT in production.
+ * Under the old default-off reading, "nobody flipped the flag" was
+ * indistinguishable from "deliberately off" — so a production deployment
+ * that forgot to enroll shipped single-factor forever and nothing ever said
+ * so. A production process with `ADMIN_2FA_ENABLED` unset is therefore a
+ * MISCONFIGURATION, and the login refuses instead of silently minting a
+ * single-factor session.
+ *
+ * Dev/test/CI is unchanged: without the flag the login is exactly the
+ * pre-F021 flow, so `pnpm test:admin-2fa` still exercises both paths.
+ */
+export type Admin2faGate = {
+  /** `true` when 2FA is active for this process. */
+  enforced: boolean;
+  /** `true` when production is running without an explicit `true` flag. */
+  blocked: boolean;
+  /** `false` only while `blocked` — the login must not proceed. */
+  allowSingleFactor: boolean;
+  /** Operator-facing copy for the blocked state (never shown to a real login). */
+  blockReason: string | null;
+};
+
+export function getAdmin2faGate(): Admin2faGate {
+  const enforced = isAdmin2faEnabled();
+  const isProduction = process.env.NODE_ENV === "production";
+  const blocked = isProduction && !enforced;
+  return {
+    enforced,
+    blocked,
+    allowSingleFactor: !blocked,
+    blockReason: blocked
+      ? "Admin 2FA is not enabled on this deployment. Set ADMIN_2FA_ENABLED=\"true\", enroll a TOTP secret (`pnpm admin:2fa-enroll`), and restart — see docs/ops/admin-2fa.md."
+      : null,
+  };
+}
+
 /** AES-256-GCM key from ADMIN_2FA_ENCRYPTION_KEY (scrypt-stretched, 32 bytes;
  * the v1 fallback salt is fixed — kept only for decrypting legacy v1 rows).
  * All NEW enrollments encrypt per-row with a random salt (SEC-02). */
@@ -218,14 +257,20 @@ export async function remainingRecoveryCodes(): Promise<number> {
 /**
  * Enrollment status for the login page props: with 2FA off the client renders
  * the EXACT pre-F021 form (no extra fields, no widget).
+ * F030 additionally surfaces the production gate so the page can tell the
+ * operator why a single-factor login is being refused.
  */
 export function getAdmin2faStatus() {
   const enabled = isAdmin2faEnabled();
+  const gate = getAdmin2faGate();
   return {
     enabled,
     // Widget only when 2FA is on AND the Turnstile parity holds (F-DEAL-003)
     turnstile: enabled &&
       Boolean(process.env.TURNSTILE_SECRET_KEY?.trim()) &&
       Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()),
+    // F030: production without an explicit flag — refuse + explain.
+    blocked: gate.blocked,
+    blockReason: gate.blockReason,
   };
 }

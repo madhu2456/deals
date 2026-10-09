@@ -1,8 +1,27 @@
 # Admin 2FA (TOTP + Turnstile) — F021
 
-Env-gated, **default-off**. With `ADMIN_2FA_ENABLED` unset or `false`, the
+Env-gated, **default-off in dev/test; must be explicitly enabled in production**
+(F030). With `ADMIN_2FA_ENABLED` unset or `false` outside production, the
 admin login is byte-for-byte the pre-F021 flow: no TOTP field, no Turnstile
 widget, no DB read. Nothing rides the deploy until the owner flips it.
+
+## F030 — production refuses to run single-factor (2026-09-26)
+
+`NODE_ENV=production` with `ADMIN_2FA_ENABLED` unset is treated as a
+**misconfiguration**, not as "deliberately off":
+
+- `lib/admin-auth.ts` `loginAdmin()` checks `getAdmin2faGate()` **before any
+  credential is compared** and returns `success: false` — no code path can
+  mint a single-factor admin session in production.
+- `/admin/login` renders an `role="alert"` banner with the fix and points at
+  this doc, so the operator is never guessing why valid credentials bounce.
+- A log line (`[admin-2fa] refusing admin login: ...`) records every refusal.
+
+Dev/test/CI is unchanged: `NODE_ENV !== "production"` still exercises the
+gate-off flow, so `pnpm test:admin-2fa` covers both paths.
+
+**Recovery**: set `ADMIN_2FA_ENABLED="true"` in `.env`, confirm an enrolled
+secret exists (step 4 below), `docker compose up -d`.
 
 ## Moving parts
 
@@ -75,6 +94,12 @@ any step: set `ADMIN_2FA_ENABLED=false` + `docker compose up -d`.
 7. **Post-flip login test**: open `/admin/login` — expect the 2FA field +
    Turnstile widget, log in with password + 6-digit code, and confirm a
    wrong code is rejected. Record the flip date in this doc.
+8. **Confirm the production gate is open** (a production process without the
+   flag refuses every login — see F030 above):
+   ```bash
+   docker compose exec -T deals sh -c 'node -e "console.log(process.env.ADMIN_2FA_ENABLED)"'
+   # must print: true
+   ```
 
 ## Regenerating codes / re-enrolling
 
@@ -87,3 +112,8 @@ single-use; the hash row records `usedAt` on first success.
 
 `pnpm test:admin-2fa` — RFC 6238 known-vector, env-gate on/off, recovery-code
 single-use, Turnstile-when-enabled wiring, static ship-state asserts.
+
+For the F030 gate itself (not automatable in CI, which is never `production`):
+on the host, `ADMIN_2FA_ENABLED` unset + `NODE_ENV=production` must refuse
+`/admin/login` and ship no `Set-Cookie: admin-session`. Verify with a wrong
+password *and* a right one before the flag is flipped (step 8 above).

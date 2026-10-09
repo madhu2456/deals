@@ -151,7 +151,7 @@ export function DealCard({ deal }: DealCardProps) {
                 className={cn(
                   "mt-0.5 inline-flex items-center gap-1 text-xs",
                   isExpiringSoon
-                    ? "font-medium text-amber-700 dark:text-amber-400"
+                    ? "font-medium text-amber-800 dark:text-amber-300"
                     : "text-muted-foreground"
                 )}
               >

@@ -19,7 +19,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isReportOriginAllowed(request.headers.get("origin"))) {
+  if (
+    !isReportOriginAllowed(
+      request.headers.get("origin"),
+      request.headers.get("sec-fetch-site")
+    )
+  ) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 

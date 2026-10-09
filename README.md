@@ -65,7 +65,7 @@ cp .env.example .env
 
 # Database
 pnpm exec prisma migrate dev
-pnpm seed          # categories + 7 curated deals (create-if-missing, idempotent)
+pnpm seed          # categories + 8 curated deals (create-if-missing, idempotent)
 
 # Dev server
 pnpm dev

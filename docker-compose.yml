@@ -41,7 +41,38 @@ services:
       HOSTNAME: "0.0.0.0"
       RUN_SEED: ${RUN_SEED:-false}
       APP_PORT: "3002"
+    # F010: OS-level least privilege to match the app-level one (the image
+    # already runs as the unprivileged `nextjs` user, uid 1001 — F008).
+    security_opt:
+      # Setuid/setgid binaries inside the image cannot escalate privileges for
+      # the container process (this is the Docker equivalent of the kernel's
+      # NO_NEW_PRIVS flag).
+      - no-new-privileges:true
+    cap_drop:
+      # ALL, with no cap_add. The app only opens a listening socket on
+      # 0.0.0.0:3000 INSIDE the container and reads/writes its own volume —
+      # no raw sockets, no ptrace, no process accounting, no setuid. Notably
+      # NET_BIND_SERVICE is deliberately NOT added: the container port is 3000
+      # (>= 1024), and the privileged host port 3002 belongs to the Docker
+      # daemon, not to the container's user namespace.
+      - ALL
+    # Read-only root filesystem. Every path the app or the entrypoint writes to
+    # is a mount below, so a writable / adds nothing: an attacker landing in
+    # this process cannot drop tools, writable payloads or cron entries into
+    # the image layers.
+    read_only: true
+    tmpfs:
+      # Next's ISR/fetch cache. Without a writable cache the 24h revalidation
+      # of /sitemap.xml (and any ISR route) fails EROFS after a day and serves
+      # stale XML forever. Sized so revalidation loops cannot exhaust RAM.
+      - /app/.next/standalone/.next/cache:rw,noexec,nosuid,size=128m
+      # entrypoint.sh scratch dirs (npm cache, XDG cache), HOME=/tmp, and the
+      # temp files sqlite3/prisma/spawn need. noexec keeps anything a
+      # compromised process stages here from being executed.
+      - /tmp:rw,noexec,nosuid,size=64m
     volumes:
+      # /app/data is the ONLY persistent write target (see docker-compose.yml
+      # header): the SQLite database, its WAL sidecars and encrypted backups.
       - deals_data:/app/data
     healthcheck:
       test:
@@ -55,6 +86,17 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
+    # F055 (audit v8.7-r2): pin the json-file driver to 20m x 350 = 7,000 MB.
+    # The Docker default is NO rotation — container logs grow until they fill
+    # the droplet disk, and on this single-droplet host a full disk is an
+    # outage, not a nuisance. Sizing and the >=180d arithmetic (measured
+    # volume for this app, not the Adticks one): see
+    # docs/ops/log-retention.md § "F055 Log Retention".
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "350"
 
 volumes:
   deals_data:

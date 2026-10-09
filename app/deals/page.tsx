@@ -3,18 +3,16 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  Search,
   SlidersHorizontal,
   Sparkles,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { DealGrid } from "../components/DealGrid";
 import { EmptyState } from "../components/EmptyState";
+import { DealsSearchForm } from "./DealsSearchForm";
 import {
   countApprovedDeals,
   getApprovedDeals,
@@ -214,36 +212,11 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               </p>
             )}
 
-            <form
-              action="/deals"
-              role="search"
-              className="mt-6 flex max-w-2xl flex-col gap-3 sm:flex-row"
-            >
-              <div className="relative min-w-0 flex-1">
-                <label htmlFor="deals-search" className="sr-only">
-                  Search deals, brands, or coupon codes
-                </label>
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  id="deals-search"
-                  name="q"
-                  defaultValue={search}
-                  placeholder="Search deals, brands, or coupon codes…"
-                  className="h-11 pl-9"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                />
-              </div>
-              {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-              {featuredOnly && <input type="hidden" name="featured" value="1" />}
-              <Button type="submit" className="h-11 min-h-11 gap-2">
-                <Search className="h-4 w-4" aria-hidden="true" />
-                Search
-              </Button>
-            </form>
+            <DealsSearchForm
+              categorySlug={categorySlug}
+              featuredOnly={featuredOnly}
+              search={search}
+            />
           </div>
         </div>
 

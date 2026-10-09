@@ -2,6 +2,14 @@ import type { MetadataRoute } from "next";
 import { MIN_CATEGORY_DEALS_FOR_INDEX } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { getSiteUrl, SITE_STATIC_LAST_MODIFIED } from "@/lib/site";
+// F001: chunk sizing + the chunk id list live in lib/sitemap-chunks.ts so the
+// /sitemap.xml index (app/sitemap-index.xml/route.ts, published at
+// /sitemap.xml by the next.config.ts rewrite) can never advertise a
+// different set of chunks than generateSitemaps() announces below. The
+// re-export keeps the previous module surface intact.
+import { DEALS_PER_SITEMAP, getSitemapChunkIds } from "@/lib/sitemap-chunks";
+
+export { DEALS_PER_SITEMAP };
 
 /**
  * 24h ISR: revalidate = 86400 with generateSitemaps() chunking (WP-DEALS-08).
@@ -9,21 +17,9 @@ import { getSiteUrl, SITE_STATIC_LAST_MODIFIED } from "@/lib/site";
  */
 export const revalidate = 86400;
 
-export const DEALS_PER_SITEMAP = 10_000;
-
 export async function generateSitemaps() {
-  const approvedNotExpired = {
-    status: "APPROVED" as const,
-    OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
-  };
-  try {
-    const count = await prisma.deal.count({ where: approvedNotExpired });
-    const totalChunks = Math.max(1, Math.ceil(count / DEALS_PER_SITEMAP));
-    return Array.from({ length: totalChunks }, (_, id) => ({ id: String(id) }));
-  } catch (err) {
-    console.error("[generateSitemaps] DB query failed, returning single sitemap", err);
-    return [{ id: "0" }];
-  }
+  const ids = await getSitemapChunkIds();
+  return ids.map((id) => ({ id }));
 }
 
 export default async function sitemap(props?: {

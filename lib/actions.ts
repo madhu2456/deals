@@ -7,8 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueSlug } from "@/lib/slug";
 import { createDeal, updateDeal } from "@/lib/data";
 import { loginAdmin, logoutAdmin, requireAdmin } from "@/lib/admin-auth";
+import { anonymizeSubmitterByEmail, isValidDsrEmail } from "@/lib/dsr-erasure";
 import { isAdmin2faEnabled } from "@/lib/admin-2fa";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, redisRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { normalizeDealUrl } from "@/lib/deal-url";
 import { absoluteUrl } from "@/lib/site";
@@ -330,15 +331,29 @@ export async function loginAdminAction(formData: FormData) {
 
   // Rate limit: max 5 attempts per 15 minutes per IP. Failed AND successful
   // attempts both consume budget — security-correct order, documented.
+  // F029: login is an AUTH surface, so a Redis outage fails CLOSED — the
+  // per-instance memory bucket is not a shared control an attacker can
+  // outrun by spreading attempts across instances.
   const ip = getClientIp(await headers());
+
+  const loginLimit = await redisRateLimit({
+    key: `login:${ip}`,
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+    failMode: "closed",
+  });
 
   if (
     process.env.NODE_ENV === "production" &&
-    (await checkRateLimit({ key: `login:${ip}`, limit: 5, windowMs: 15 * 60 * 1000 }))
+    loginLimit.limited
   ) {
     return {
       success: false as const,
-      error: "Too many login attempts. Please try again in 15 minutes.",
+      // 429 for real throttling, a distinct message for the F029 fail-closed
+      // outage so an operator-visible outage is never read as user abuse.
+      error: loginLimit.failClosed
+        ? "Login is temporarily unavailable. Please try again shortly."
+        : "Too many login attempts. Please try again in 15 minutes.",
     };
   }
 
@@ -539,6 +554,33 @@ export async function adminDeleteDealAction(id: string) {
   revalidatePath("/sitemap.xml");
 
   return { success: true as const };
+}
+
+export async function adminAnonymizeSubmitterAction(submittedByEmail: string) {
+  await requireAdmin();
+
+  if (!isValidDsrEmail(submittedByEmail)) {
+    return { success: false as const, error: "A valid email is required" };
+  }
+
+  const result = await anonymizeSubmitterByEmail(submittedByEmail);
+  console.info("[dsr] submitter anonymized", {
+    count: result.count,
+    redactedEmail: result.email,
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/deals");
+  revalidatePath("/");
+  revalidatePath("/sitemap.xml");
+  return { success: true as const, count: result.count };
+}
+
+export async function adminAnonymizeSubmitterFormAction(formData: FormData) {
+  const rawEmail = formData.get("submittedByEmail");
+  const email = typeof rawEmail === "string" ? rawEmail : "";
+  await adminAnonymizeSubmitterAction(email);
+  redirect("/admin");
 }
 
 async function parseDealFormData(

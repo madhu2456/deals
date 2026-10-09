@@ -10,6 +10,27 @@ mkdir -p /tmp/npm-cache /tmp/cache /app/data
 # Default SQLite path (persisted via Docker volume at /app/data)
 export DATABASE_URL="${DATABASE_URL:-file:/app/data/deals.db}"
 
+# F010: with `read_only: true` the image root is EROFS, so a RELATIVE
+# DATABASE_URL — `file:./dev.db` is the local-dev value, and compose
+# interpolates .env straight into the container — resolves to /app/dev.db and
+# `prisma migrate deploy` dies with "unable to open database file" before the
+# app ever serves. Re-anchor a relative path on the one writable mount,
+# keeping the filename so an existing dev DB is still found by name. An
+# absolute path is honored verbatim — that is the production shape.
+DB_URL_PATH="${DATABASE_URL#file:}"
+DB_URL_QUERY=""
+case "${DB_URL_PATH}" in
+  *\?*) DB_URL_QUERY="?${DB_URL_PATH#*\?}"; DB_URL_PATH="${DB_URL_PATH%%\?*}" ;;
+esac
+case "${DB_URL_PATH}" in
+  /*) ;; # absolute — leave alone ( production & docker volume deploys)
+  *) DB_URL_PATH="/app/data/$(basename "${DB_URL_PATH}")"
+     DATABASE_URL="file:${DB_URL_PATH}${DB_URL_QUERY}"
+     echo "[deals] read_only rootfs: re-anchored relative DATABASE_URL -> ${DATABASE_URL}"
+     ;;
+esac
+export DATABASE_URL
+
 echo "[deals] DATABASE_URL=${DATABASE_URL}"
 echo "[deals] Running Prisma migrations (up-only: migrate deploy — see F018 contract above)..."
 

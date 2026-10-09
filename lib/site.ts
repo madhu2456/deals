@@ -69,6 +69,25 @@ export const SEO_PARTNER = {
 };
 
 /**
+ * Fix #8 / F063: the 8 canonical Person identity anchors, in the same order
+ * published by the rest of the fleet (portfolio, blog, enroller, televault).
+ * `sameAs` is how a knowledge graph resolves "this Person is that Person", so
+ * the list holds authority profiles only. No product or property domain is
+ * ever allowed here — that would merge the founder entity into the website it
+ * is linked from; properties link through publisher / author / creator.
+ */
+export const PERSON_SAME_AS = [
+  "https://www.wikidata.org/wiki/Q139807441",
+  "https://github.com/madhu2456",
+  "https://www.linkedin.com/in/madhu-dadi-54684531",
+  "https://x.com/madhu245",
+  "https://medium.com/@madhu.kumar245",
+  "https://dev.to/madhudadi",
+  "https://www.youtube.com/@madhukumar245",
+  "https://maps.google.com/?cid=CXaUijPkQhVkEBM",
+] as const;
+
+/**
  * Stable lastmod for static sitemap entries (/, /deals, /categories, /about,
  * /affiliate-disclosure). These pages change only when repo content changes,
  * so a constant beats a generation-time clock stamp: the sitemap must never

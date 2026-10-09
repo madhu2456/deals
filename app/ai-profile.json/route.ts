@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { personSchema } from "@/lib/seo/json-ld";
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME, SITE_STATIC_LAST_MODIFIED, PUBLISHER, SEO_PARTNER } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -51,12 +52,9 @@ export async function GET() {
         description: SITE_DESCRIPTION,
         logo: `${site}/icon-512.png`,
         parentOrganization: { "@id": `${PUBLISHER.url}/#organization` },
-        founder: {
-          "@type": "Person",
-          "@id": `${PUBLISHER.url}/#person`,
-          name: PUBLISHER.name,
-          url: PUBLISHER.profile,
-        },
+        // F063 / Fix #8: reuse the canonical founder node emitted by the
+        // HTML schemas so every surface has one identity contract.
+        founder: personSchema(),
       },
       {
         "@type": "WebSite",

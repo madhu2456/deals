@@ -55,7 +55,7 @@ export function AdminActions({ dealId, status, slug }: AdminActionsProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="text-amber-600 hover:text-amber-700"
+          className="text-amber-700 hover:text-amber-800"
           aria-label="Reject deal"
           disabled={pending}
           onClick={() => runAction(() => adminRejectDealAction(dealId))}

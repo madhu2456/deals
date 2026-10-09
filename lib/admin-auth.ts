@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { isAdmin2faEnabled, verifyAdminSecondFactor } from "@/lib/admin-2fa";
+import { getAdmin2faGate, isAdmin2faEnabled, verifyAdminSecondFactor } from "@/lib/admin-2fa";
 
 export const COOKIE_NAME =
   process.env.NODE_ENV === "production" ? "__Host-admin-session" : "admin-session";
@@ -60,6 +60,18 @@ export async function loginAdmin(
   totpCode?: string,
   verifyTotpFn?: (code: string, secret: Buffer) => number | null
 ) {
+  // F030: fail-closed on 2FA enablement in production. An unset
+  // ADMIN_2FA_ENABLED is treated as "the deployment forgot to enroll", not
+  // "single-factor is fine" — refuse here, before any credential work, so no
+  // code path can mint a single-factor admin session in production.
+  const gate = getAdmin2faGate();
+  if (gate.blocked) {
+    console.error(
+      "[admin-2fa] refusing admin login: NODE_ENV=production without ADMIN_2FA_ENABLED=\"true\" (see docs/ops/admin-2fa.md)"
+    );
+    return { success: false as const, error: gate.blockReason ?? "Admin 2FA is not enabled" };
+  }
+
   const creds = getCredentials();
   const userOk = safeEqual(username, creds.username);
   const passOk = safeEqual(password, creds.password);
@@ -69,6 +81,7 @@ export async function loginAdmin(
 
   // F021 2FA — env-gated, default-off. With ADMIN_2FA_ENABLED unset/false
   // this block is dead code: login behaves exactly as pre-F021.
+  // (In production that unset state is unreachable — the gate above.)
   if (isAdmin2faEnabled()) {
     if (!totpCode || !totpCode.trim()) {
       return { success: false as const, error: "2FA code is required" };
