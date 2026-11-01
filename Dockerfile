@@ -15,8 +15,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Prisma schema needed so postinstall/generate can run if configured
 COPY prisma ./prisma
-# Prefer frozen lockfile; fall back if lock is slightly out of sync in CI
-RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+# Lockfile drift must fail the build loudly (U-81: no fail-open fallback)
+RUN pnpm install --frozen-lockfile
 
 # ---------- build ----------
 FROM base AS builder

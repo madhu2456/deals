@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — 2026-09-19
 
+### Changed
+- **Enforce frozen-lockfile install in image build (`Dockerfile`)**: Removed the `|| pnpm install --no-frozen-lockfile` fallback so lockfile drift now fails the build loudly instead of silently resolving loose dependencies (U-81).
+
 ### Added
 - **TeleVault Integration in Site Configuration (`lib/site.ts`)**: Added `televault: "https://televault.madhudadi.in"` to `PUBLISHER` configuration.
 - **Cross-Ecosystem 5-Peer Related Profiles & Verification (`app/ai-profile.json/route.ts`, `scripts/verify-discovery-routes.ts`)**: Added TeleVault's AI profile URL to `relatedProfiles` in `ai-profile.json`, establishing 5-peer reciprocal discovery, and updated discovery route verification suite to assert all 5 profiles.
